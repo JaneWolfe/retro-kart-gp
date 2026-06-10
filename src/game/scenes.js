@@ -127,7 +127,7 @@ export class TitleScene {
 
 // ---- Main menu ---------------------------------------------------------------
 
-const MENU_ITEMS = ['QUICK RACE', 'OPTIONS', 'CREDITS'];
+const MENU_ITEMS = ['QUICK RACE', 'CONTROLS', 'OPTIONS', 'CREDITS'];
 
 export class MenuScene {
   constructor(game) { this.game = game; this.t = 0; this.sel = 0; }
@@ -146,7 +146,8 @@ export class MenuScene {
     if (input.justPressed('start')) {
       audio.sfx('select');
       if (this.sel === 0) this.game.setScene(new SelectScene(this.game));
-      else if (this.sel === 1) this.game.setScene(new OptionsScene(this.game));
+      else if (this.sel === 1) this.game.setScene(new ControlsScene(this.game));
+      else if (this.sel === 2) this.game.setScene(new OptionsScene(this.game));
       else this.game.setScene(new CreditsScene(this.game));
     }
   }
@@ -157,7 +158,7 @@ export class MenuScene {
     drawBackdrop(game, ctx, this.t);
     drawText(ctx, 'RETRO KART GP', W / 2, 18, { align: 'center', scale: 2, color: '#ffd83d', outline: '#181828' });
     MENU_ITEMS.forEach((label, i) => {
-      const y = H * 0.38 + i * 20;
+      const y = H * 0.36 + i * 18;
       const sel = i === this.sel;
       if (sel) drawText(ctx, '>', W / 2 - textWidth(label, 2) / 2 - 12, y, { scale: 2, color: '#ffd83d' });
       drawText(ctx, label, W / 2, y, { align: 'center', scale: 2, color: sel ? '#fff' : '#9090a8', shadow: '#181828' });
@@ -216,6 +217,48 @@ export class OptionsScene {
       drawText(ctx, row.value, W * 0.82, y, { align: 'right', scale: 2, color: sel ? '#4fe3c0' : '#7a8a90', shadow: '#181828' });
     });
     drawText(ctx, 'LEFT/RIGHT OR ENTER: CHANGE', W / 2, H - 12, { align: 'center', color: '#b8b8cc', shadow: '#181828' });
+  }
+}
+
+// ---- Controls ------------------------------------------------------------------
+
+const CONTROL_ROWS = [
+  ['UP / DOWN', 'ACCELERATE / BRAKE-REVERSE'],
+  ['LEFT / RIGHT', 'STEER'],
+  ['SPACE (HOLD)', 'HOP + DRIFT, RELEASE = TURBO'],
+  ['X OR R-SHIFT', 'USE ITEM'],
+  ['ENTER', 'SELECT / START'],
+  ['ESC OR P', 'PAUSE / BACK'],
+  ['R', 'RECOVER TO TRACK'],
+  ['C', 'CAMERA VIEW'],
+  ['M', 'MUTE'],
+  ['F', 'FULLSCREEN'],
+  ['`', 'DEBUG OVERLAY'],
+];
+
+export class ControlsScene {
+  constructor(game) { this.game = game; this.t = 0; }
+
+  update(dt) {
+    this.t += dt;
+    if (input.justPressed('back') || input.justPressed('start')) {
+      audio.sfx('back');
+      this.game.setScene(new MenuScene(this.game));
+    }
+  }
+
+  render(ctx) {
+    const game = this.game;
+    const W = game.display.W, H = game.display.H;
+    drawBackdrop(game, ctx, this.t, 0.6);
+    drawText(ctx, 'CONTROLS', W / 2, 14, { align: 'center', scale: 2, color: '#ffd83d', outline: '#181828' });
+    const mid = W * 0.46;
+    CONTROL_ROWS.forEach(([key, desc], i) => {
+      const y = 34 + i * 14;
+      drawText(ctx, key, mid - 6, y, { align: 'right', color: '#4fe3c0', shadow: '#181828' });
+      drawText(ctx, desc, mid + 6, y, { color: '#e8e8f0', shadow: '#181828' });
+    });
+    drawText(ctx, 'ESC: BACK', W / 2, H - 12, { align: 'center', color: '#b8b8cc', shadow: '#181828' });
   }
 }
 

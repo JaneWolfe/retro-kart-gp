@@ -11,7 +11,7 @@ import { CAMERA_MODES, drawSky } from './mode7.js';
 import { drawHUD, drawCountdown, drawPauseMenu } from './hud.js';
 import { KART_FW, KART_FH, KART_FRAMES } from './sprites.js';
 import { RACERS, TOTAL_LAPS } from './data.js';
-import { N_SAMPLES, SURF } from './track.js';
+import { N_SAMPLES, SURF, SURF_NAMES } from './track.js';
 
 const KART_WORLD_SIZE = 30; // world units across one kart sprite
 
@@ -61,6 +61,8 @@ export class RaceScene {
     this.messageColor = '#fff';
     this.lapPopupT = 0;
     this.particles = [];
+    this.wallHits = 0;   // player barrier impacts (debug overlay)
+    this.wallSfxT = 0;
     this.camMode = 0;
     this.cam = {
       x: this.player.x, y: this.player.y,
@@ -114,6 +116,7 @@ export class RaceScene {
 
     if (this.messageT > 0) this.messageT -= dt;
     if (this.lapPopupT > 0) this.lapPopupT -= dt;
+    if (this.wallSfxT > 0) this.wallSfxT -= dt;
 
     // countdown
     if (this.phase === 'countdown') {
@@ -230,6 +233,20 @@ export class RaceScene {
       }
       // particles for everyone
       if (ev === 'boost') this.emitBoostFlames(kart);
+      if (ev === 'wall') {
+        if (kart.isPlayer) {
+          this.wallHits++;
+          if (this.wallSfxT <= 0) { audio.sfx('thud'); this.wallSfxT = 0.25; }
+        }
+        for (let i = 0; i < 4; i++) {
+          this.particles.push({
+            x: kart.x + (Math.random() - 0.5) * 10,
+            y: kart.y + (Math.random() - 0.5) * 10,
+            vx: -kart.vx * 0.2, vy: -kart.vy * 0.2,
+            life: 0.3, maxLife: 0.3, size: 4, color: '#e8e4dc',
+          });
+        }
+      }
     }
     // continuous particles
     if (kart.drift && Math.random() < 0.6) this.emitDriftSmoke(kart);
@@ -451,8 +468,10 @@ export class RaceScene {
     const k = this.player;
     const lines = [
       `FPS ${this.game.fps.toFixed(0)}`,
-      `SPD ${Math.hypot(k.vx, k.vy).toFixed(0)} SURF ${k.surface}`,
-      `IDX ${k.sampleIdx} LAP ${k.lap}`,
+      `SPD ${Math.hypot(k.vx, k.vy).toFixed(0)} SURF ${SURF_NAMES[k.surface]}`,
+      `IDX ${k.sampleIdx}/${N_SAMPLES} LAP ${k.lap}`,
+      `CHECKPOINT ${k.passedHalf ? 'OK' : 'PENDING'}`,
+      `WALL HITS ${this.wallHits}`,
       `DRIFT ${k.drift ? k.drift.charge.toFixed(2) : '-'} BOOST ${k.boostT.toFixed(2)}`,
       `CAM ${CAMERA_MODES[this.camMode].name}`,
     ];

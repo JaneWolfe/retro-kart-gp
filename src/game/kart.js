@@ -147,8 +147,31 @@ export class Kart {
     this.speed = fwd;
     this.vx = cosH * fwd - sinH * lat;
     this.vy = sinH * fwd + cosH * lat;
+    const prevX = this.x, prevY = this.y;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
+
+    // barrier bounce: never enter a wall cell; reflect off the track-parallel
+    // barrier with some restitution and scrape losses
+    if (track.surfaceAt(this.x | 0, this.y | 0) === SURF.WALL) {
+      const sm = track.samples[this.sampleIdx];
+      const px = -sm.dy, py = sm.dx; // lateral unit vector
+      const latOff = (this.x - sm.x) * px + (this.y - sm.y) * py;
+      const sgn = latOff >= 0 ? 1 : -1;
+      const nx = -px * sgn, ny = -py * sgn; // wall normal, toward centerline
+      const vn = this.vx * nx + this.vy * ny;
+      if (vn < 0) {
+        this.vx -= 1.45 * vn * nx;
+        this.vy -= 1.45 * vn * ny;
+      }
+      this.vx *= 0.8;
+      this.vy *= 0.8;
+      this.speed *= 0.8;
+      this.x = prevX + nx * 1.5;
+      this.y = prevY + ny * 1.5;
+      this.drift = null;
+      if (Math.abs(vn) > 30) this.events.push('wall');
+    }
 
     // ---- items ----
     if (this.itemRoll > 0) {

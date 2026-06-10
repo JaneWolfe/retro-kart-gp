@@ -8,7 +8,11 @@ export const WORLD = 2048;
 export const ROAD_W = 120;
 export const N_SAMPLES = 720;
 
-export const SURF = { GRASS: 0, ROAD: 1, CURB: 2, BOOST: 4 };
+export const SURF = { GRASS: 0, ROAD: 1, CURB: 2, BOOST: 4, WALL: 8 };
+export const SURF_NAMES = { 0: 'GRASS', 1: 'ROAD', 2: 'CURB', 4: 'BOOST', 8: 'WALL' };
+
+// barrier centerline distance from the road centerline
+const WALL_OFF = ROAD_W / 2 + 50;
 
 // Closed circuit control points, clockwise-ish, start on the bottom straight.
 const CONTROL = [
@@ -117,6 +121,20 @@ export function buildTrack() {
   road.width = road.height = WORLD;
   const rg = road.getContext('2d');
   rg.lineJoin = 'round';
+  // barriers first, so the road paints over any hairpin overlap
+  for (const off of [-WALL_OFF, WALL_OFF]) {
+    offsetPath(rg, samples, off);
+    rg.lineWidth = 16;
+    rg.strokeStyle = '#23232e';
+    rg.stroke();
+    rg.lineWidth = 11;
+    rg.strokeStyle = '#e8e4dc';
+    rg.stroke();
+    rg.setLineDash([20, 20]);
+    rg.strokeStyle = '#cf3a30';
+    rg.stroke();
+    rg.setLineDash([]);
+  }
   // curb: white base, red dashes over it
   tracePath(rg, samples);
   rg.lineWidth = ROAD_W + 18;
@@ -215,6 +233,14 @@ export function buildTrack() {
   sg.save();
   sg.scale(0.5, 0.5);
   sg.lineJoin = 'round';
+  // walls live in the green channel so antialiased edges against the road
+  // (red channel) can't be misread as boost pads
+  sg.strokeStyle = 'rgb(0,255,0)';
+  sg.lineWidth = 12;
+  for (const off of [-WALL_OFF, WALL_OFF]) {
+    offsetPath(sg, samples, off);
+    sg.stroke();
+  }
   tracePath(sg, samples);
   sg.lineWidth = ROAD_W + 18;
   sg.strokeStyle = 'rgb(160,0,0)'; // curb
@@ -222,7 +248,7 @@ export function buildTrack() {
   sg.lineWidth = ROAD_W;
   sg.strokeStyle = 'rgb(80,0,0)';  // road
   sg.stroke();
-  sg.fillStyle = 'rgb(240,0,0)';   // boost
+  sg.fillStyle = 'rgb(200,0,0)';   // boost
   for (const idx of boostPads) {
     const s = samples[idx];
     sg.save();
@@ -236,7 +262,12 @@ export function buildTrack() {
   const surface = new Uint8Array(SURF_SIZE * SURF_SIZE);
   for (let i = 0; i < surface.length; i++) {
     const r = sdata[i * 4];
-    surface[i] = r >= 200 ? SURF.BOOST : r >= 120 ? SURF.CURB : r >= 40 ? SURF.ROAD : SURF.GRASS;
+    const g2 = sdata[i * 4 + 1];
+    surface[i] = (g2 >= 100 && r < 40) ? SURF.WALL
+      : r >= 180 ? SURF.BOOST
+      : r >= 120 ? SURF.CURB
+      : r >= 40 ? SURF.ROAD
+      : SURF.GRASS;
   }
 
   const surfaceAt = (x, y) => {

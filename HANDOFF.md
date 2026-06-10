@@ -1,4 +1,4 @@
-# HANDOFF — Retro Kart GP, end of Day 1 (2026-06-10)
+# HANDOFF — Retro Kart GP (2026-06-10, Day 1 complete + Day 2 track rules)
 
 ## State: playable vertical slice, verified in-browser
 
@@ -10,6 +10,14 @@ ENTER title, menu, pixel-perfect 426x240/320x240 scaling, input manager,
 scene manager, drivable kart, HUD with speed + FPS, audio unlock on
 keypress or click, and localStorage settings (display mode, music volume,
 SFX volume, CRT scanlines).
+
+Day 2 track rules are also in: red/white barriers ring the circuit ~50 units
+off the road edge (SURF.WALL in the surface map's green channel), with
+reflect-and-scrape bounce physics (restitution 0.45, 20% speed loss, never
+tunnels — verified by driving into a wall at 230 u/s). The HUD has a
+checkpoint-validity lamp (CP --/OK), the debug overlay reports surface name,
+checkpoint state and wall-hit count, and the main menu gained a CONTROLS
+page listing every binding.
 Verified headlessly (screenshots + state inspection); the **drift feel has
 not been hand-tested** — only AI/straight-line driving was verified live.
 
@@ -54,6 +62,9 @@ No assets are downloaded yet; everything on screen/speaker is procedural
 1. **Drift handling untested by a human.** Physics verified numerically only.
    The outward-fling force (36 u/s²) and drift turn rates may need tuning.
 2. Trees and arrow signs have **no collision** — karts drive through them.
+   (Barriers DO collide as of Day 2; trees sit outside the barriers anyway.)
+   Barrier offset paths could self-intersect at extreme hairpins — looks fine
+   on Sunset Loop, but check visuals when adding new tracks.
 3. Item roulette always resolves to Turbo (single item type, by design today,
    but the flashing roulette implies variety that isn't there).
 4. AI never drifts and has no engine audio (player only).

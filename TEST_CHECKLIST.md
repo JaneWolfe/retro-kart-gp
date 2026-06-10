@@ -9,6 +9,11 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 - [x] Race HUD shows always-on speedometer (KMH) and FPS readout
 - [x] Music/SFX volume settings (0–100% in 10% steps) apply live and persist
 - [x] Audio unlocks from a mouse click as well as a keypress
+- [x] Barriers ring the circuit; driving into one bounces the kart back with
+      speed loss, registers a WALL HIT, and never tunnels through
+- [x] HUD shows checkpoint validity lamp (CP -- / CP OK) under the lap counter
+- [x] Debug overlay shows surface name, checkpoint state, and wall-hit count
+- [x] CONTROLS page in the main menu lists every binding
 - [x] 60 FPS sustained in race (426x240, debug overlay confirms)
 - [x] Speed cap holds: 230 u/s flat, ~303 only during boost pads
 - [x] AI completes 3 laps (~57s) and the race auto-finishes to results
@@ -28,6 +33,7 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 ### Menus
 - [ ] Arrow keys + Enter navigate; menu blip/select sounds play
 - [ ] Esc backs out of every submenu
+- [ ] Controls page is readable in both display modes
 - [ ] Options: display mode switches instantly, scanlines visible in CRT mode
 - [ ] Music/SFX volume steps (left/right) audibly raise/lower levels independently
 - [ ] Credits screen lists asset plan, Esc returns
@@ -39,6 +45,9 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 - [ ] **Drift: hold Space + steer → hop, then slide; sparks turn cyan (~1.1s)
       then orange (~2.3s); release Space → mini-turbo burst** (tuning feedback wanted)
 - [ ] Driving onto grass slows you down hard + dust + engine wobble
+- [ ] Hitting a barrier bounces you back with a thud (does it feel fair?)
+- [ ] Barrier visuals look right at the tightest corners (no stripe glitches)
+- [ ] CP lamp flips to OK at mid-track, back to -- after crossing the line
 - [ ] Boost pads (orange chevrons) give a burst + sound
 - [ ] Item box pickup → flashing slot → turbo; X/Right Shift fires it
 - [ ] R recovers to the track centerline facing forward

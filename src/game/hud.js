@@ -15,9 +15,14 @@ export function drawHUD(ctx, race, W, H) {
   drawText(ctx, ORDINALS[pos], 8, 8, { scale: 3, color: ORD_COLORS[pos], outline: '#181828' });
   drawText(ctx, `${race.game.fps | 0} FPS`, 8, 26, { color: '#7a8a90', shadow: '#181828' });
 
-  // lap (top-right)
+  // lap (top-right) + checkpoint validity lamp under it
   const lap = Math.min(Math.max(player.lap, 1), TOTAL_LAPS);
   drawText(ctx, `LAP ${lap}/${TOTAL_LAPS}`, W - 8, 9, { align: 'right', scale: 2, color: '#fff', outline: '#181828' });
+  drawText(ctx, player.passedHalf ? 'CP OK' : 'CP --', W - 8, 26, {
+    align: 'right',
+    color: player.passedHalf ? '#7df07d' : '#7a8a90',
+    shadow: '#181828',
+  });
 
   // race timer (top-center) — locks to the player's final time after the line
   drawText(ctx, formatTime(player.finished ? player.finishTime : race.raceTime), W / 2, 8, { align: 'center', color: '#e8e8f0', shadow: '#181828' });
