@@ -83,6 +83,44 @@ function offsetPath(ctx, samples, off) {
   ctx.closePath();
 }
 
+// Barrier polylines at ±WALL_OFF from the centerline. Offset paths
+// self-intersect at tight corners, which would drop wall fragments onto the
+// racing line — so any point that ends up closer than WALL_OFF to *any*
+// centerline sample is culled, leaving a gap (runoff) at sharp corner insides.
+function buildWallSegments(samples) {
+  const segs = [];
+  const minD2 = (WALL_OFF - 4) ** 2;
+  for (const side of [-1, 1]) {
+    let cur = null;
+    for (let i = 0; i <= N_SAMPLES; i++) {
+      const s = samples[i % N_SAMPLES];
+      const x = s.x - s.dy * WALL_OFF * side;
+      const y = s.y + s.dx * WALL_OFF * side;
+      let ok = true;
+      for (let j = 0; j < N_SAMPLES; j += 2) {
+        const c = samples[j];
+        const dx = x - c.x, dy = y - c.y;
+        if (dx * dx + dy * dy < minD2) { ok = false; break; }
+      }
+      if (ok) {
+        if (!cur) { cur = []; segs.push(cur); }
+        cur.push({ x, y });
+      } else {
+        cur = null;
+      }
+    }
+  }
+  return segs.filter((seg) => seg.length > 2);
+}
+
+function traceSegments(ctx, segs) {
+  ctx.beginPath();
+  for (const seg of segs) {
+    ctx.moveTo(seg[0].x, seg[0].y);
+    for (let i = 1; i < seg.length; i++) ctx.lineTo(seg[i].x, seg[i].y);
+  }
+}
+
 function curvatureAt(samples, i, span = 12) {
   const a = samples[i], b = samples[(i + span) % N_SAMPLES];
   // cross product sign: + means turning left (screen coords)
@@ -121,20 +159,20 @@ export function buildTrack() {
   road.width = road.height = WORLD;
   const rg = road.getContext('2d');
   rg.lineJoin = 'round';
-  // barriers first, so the road paints over any hairpin overlap
-  for (const off of [-WALL_OFF, WALL_OFF]) {
-    offsetPath(rg, samples, off);
-    rg.lineWidth = 16;
-    rg.strokeStyle = '#23232e';
-    rg.stroke();
-    rg.lineWidth = 11;
-    rg.strokeStyle = '#e8e4dc';
-    rg.stroke();
-    rg.setLineDash([20, 20]);
-    rg.strokeStyle = '#cf3a30';
-    rg.stroke();
-    rg.setLineDash([]);
-  }
+  // barriers first, so the road paints over any remaining overlap
+  const wallSegments = buildWallSegments(samples);
+  rg.lineCap = 'round';
+  traceSegments(rg, wallSegments);
+  rg.lineWidth = 16;
+  rg.strokeStyle = '#23232e';
+  rg.stroke();
+  rg.lineWidth = 11;
+  rg.strokeStyle = '#e8e4dc';
+  rg.stroke();
+  rg.setLineDash([20, 20]);
+  rg.strokeStyle = '#cf3a30';
+  rg.stroke();
+  rg.setLineDash([]);
   // curb: white base, red dashes over it
   tracePath(rg, samples);
   rg.lineWidth = ROAD_W + 18;
@@ -237,10 +275,9 @@ export function buildTrack() {
   // (red channel) can't be misread as boost pads
   sg.strokeStyle = 'rgb(0,255,0)';
   sg.lineWidth = 12;
-  for (const off of [-WALL_OFF, WALL_OFF]) {
-    offsetPath(sg, samples, off);
-    sg.stroke();
-  }
+  sg.lineCap = 'round';
+  traceSegments(sg, wallSegments);
+  sg.stroke();
   tracePath(sg, samples);
   sg.lineWidth = ROAD_W + 18;
   sg.strokeStyle = 'rgb(160,0,0)'; // curb

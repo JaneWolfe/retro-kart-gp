@@ -63,8 +63,12 @@ No assets are downloaded yet; everything on screen/speaker is procedural
    The outward-fling force (36 u/s²) and drift turn rates may need tuning.
 2. Trees and arrow signs have **no collision** — karts drive through them.
    (Barriers DO collide as of Day 2; trees sit outside the barriers anyway.)
-   Barrier offset paths could self-intersect at extreme hairpins — looks fine
-   on Sunset Loop, but check visuals when adding new tracks.
+   Barrier self-intersection at tight corners initially dropped wall
+   fragments onto the racing line (felt like invisible bounces at the
+   chicane) — fixed by culling barrier points that fall closer than
+   WALL_OFF to any centerline sample, which leaves intentional runoff gaps
+   at sharp corner insides. Verified: zero wall cells within ±95 of the
+   centerline, zero wall hits over a full autopilot race.
 3. Item roulette always resolves to Turbo (single item type, by design today,
    but the flashing roulette implies variety that isn't there).
 4. AI never drifts and has no engine audio (player only).
