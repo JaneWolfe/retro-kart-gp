@@ -1,0 +1,10 @@
+# OS
+.DS_Store
+
+# Local IDE / assistant config (machine-specific absolute paths)
+.claude/
+
+# Downloaded CC0 assets are fetched per-machine, not committed
+assets/audio/
+assets/images/
+assets/fonts/
