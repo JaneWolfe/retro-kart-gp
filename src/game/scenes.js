@@ -4,8 +4,9 @@
 import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { drawText, textWidth } from '../engine/font.js';
-import { formatTime, TAU } from '../engine/math.js';
+import { clamp, formatTime, TAU } from '../engine/math.js';
 import { MODES } from '../engine/display.js';
+import { assets } from '../engine/assets.js';
 import { drawSky } from './mode7.js';
 import { KART_FW, KART_FH, KART_FRAMES } from './sprites.js';
 import { RACERS } from './data.js';
@@ -38,6 +39,47 @@ function menuNav(items) {
   if (input.justPressed('down')) idx = 1;
   if (idx !== null) audio.sfx('move');
   return idx;
+}
+
+// ---- Boot ------------------------------------------------------------------
+// Faux-BIOS power-on screen. Lines appear over ~2s; Enter skips.
+
+export class BootScene {
+  constructor(game) { this.game = game; this.t = 0; }
+
+  update(dt) {
+    this.t += dt;
+    if (this.t > 3.2 || (this.t > 0.7 && input.justPressed('start'))) {
+      this.game.setScene(new TitleScene(this.game));
+    }
+  }
+
+  render(ctx) {
+    const W = this.game.display.W, H = this.game.display.H;
+    ctx.fillStyle = '#0a0a12';
+    ctx.fillRect(0, 0, W, H);
+    const lines = [
+      [0.0, 'BIG B SYSTEMS', '#4fe3c0', 2],
+      [0.2, 'RETRO KART BIOS V1.0', '#9090a8', 1],
+      [0.6, 'MEM CHECK........ 2048K OK', '#7df07d', 1],
+      [1.0, `EXTERNAL ASSETS.. ${assets.found}/${assets.total}`, '#7df07d', 1],
+      [1.4, 'PROCEDURAL FX.... READY', '#7df07d', 1],
+      [1.8, 'SOUND............ READY', '#7df07d', 1],
+    ];
+    let y = 22;
+    for (const [at, text, color, scale] of lines) {
+      if (this.t >= at) drawText(ctx, text, 18, y, { color, scale });
+      y += 7 * scale + 5;
+    }
+    if (this.t >= 2.2 && Math.floor(this.t * 2.2) % 2 === 0) {
+      drawText(ctx, 'BOOT OK - PRESS ENTER', 18, y + 6, { color: '#ffd83d' });
+    }
+    // blinking cursor block, like a terminal
+    if (Math.floor(this.t * 3) % 2 === 0) {
+      ctx.fillStyle = '#4fe3c0';
+      ctx.fillRect(W - 14, H - 14, 6, 8);
+    }
+  }
 }
 
 // ---- Title -----------------------------------------------------------------
@@ -134,8 +176,8 @@ export class OptionsScene {
     return [
       { label: 'DISPLAY', value: MODES[p.displayMode].label, change: (d) => { p.displayMode = p.displayMode === 'wide' ? 'crt' : 'wide'; this.game.applyPrefs(); } },
       { label: 'SCANLINES', value: p.scanlines ? 'ON' : 'OFF', change: () => { p.scanlines = !p.scanlines; this.game.applyPrefs(); } },
-      { label: 'MUSIC', value: p.music ? 'ON' : 'OFF', change: () => { p.music = !p.music; this.game.applyPrefs(); } },
-      { label: 'SFX', value: p.sfx ? 'ON' : 'OFF', change: () => { p.sfx = !p.sfx; this.game.applyPrefs(); } },
+      { label: 'MUSIC VOL', value: `${Math.round(p.musicVol * 100)}%`, change: (d) => { p.musicVol = clamp(Math.round((p.musicVol + d * 0.1) * 10) / 10, 0, 1); this.game.applyPrefs(); } },
+      { label: 'SFX VOL', value: `${Math.round(p.sfxVol * 100)}%`, change: (d) => { p.sfxVol = clamp(Math.round((p.sfxVol + d * 0.1) * 10) / 10, 0, 1); this.game.applyPrefs(); } },
       { label: 'BACK', value: '', change: null },
     ];
   }

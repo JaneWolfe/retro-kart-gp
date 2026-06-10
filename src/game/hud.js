@@ -10,9 +10,10 @@ const ORD_COLORS = ['#ffd83d', '#cfcfd8', '#d89a5a', '#9ab0c8'];
 export function drawHUD(ctx, race, W, H) {
   const player = race.player;
 
-  // position (top-left)
+  // position (top-left) + FPS under it
   const pos = race.positionOf(player);
   drawText(ctx, ORDINALS[pos], 8, 8, { scale: 3, color: ORD_COLORS[pos], outline: '#181828' });
+  drawText(ctx, `${race.game.fps | 0} FPS`, 8, 26, { color: '#7a8a90', shadow: '#181828' });
 
   // lap (top-right)
   const lap = Math.min(Math.max(player.lap, 1), TOTAL_LAPS);
@@ -38,6 +39,11 @@ export function drawHUD(ctx, race, W, H) {
   } else if (player.item === 'turbo') {
     ctx.drawImage(race.sprites.bolt, 12, H - 22);
   }
+
+  // speedometer (next to the item slot; world units scaled to a kmh-ish number)
+  const kmh = Math.round(Math.hypot(player.vx, player.vy) * 0.62);
+  drawText(ctx, String(kmh), 34, H - 24, { scale: 2, color: player.boostT > 0 ? '#ffd83d' : '#fff', outline: '#181828' });
+  drawText(ctx, 'KMH', 34, H - 12, { color: '#9090a8', shadow: '#181828' });
 
   // minimap (bottom-right)
   const mm = race.track.minimap;

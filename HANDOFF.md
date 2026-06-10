@@ -3,8 +3,13 @@
 ## State: playable vertical slice, verified in-browser
 
 Full game loop works end to end with zero console errors at 60 FPS:
-boot → title → menu/options/credits → racer select (4 original racers) →
-3-lap race on "Sunset Loop" vs 3 AI → results with times/best lap → menu.
+BIOS-style boot screen → title → menu/options/credits → racer select
+(4 original racers) → 3-lap race on "Sunset Loop" vs 3 AI → results with
+times/best lap → menu. The Day-1 spec is fully met: boot screen, PRESS
+ENTER title, menu, pixel-perfect 426x240/320x240 scaling, input manager,
+scene manager, drivable kart, HUD with speed + FPS, audio unlock on
+keypress or click, and localStorage settings (display mode, music volume,
+SFX volume, CRT scanlines).
 Verified headlessly (screenshots + state inspection); the **drift feel has
 not been hand-tested** — only AI/straight-line driving was verified live.
 
@@ -30,8 +35,8 @@ No assets are downloaded yet; everything on screen/speaker is procedural
   blending, hop→drift→mini-turbo, boost, lap validation, collisions),
   `ai.js` (lookahead chase + corner braking + stuck recovery), `race.js`
   (scene: countdown/race/finish, camera, particles, items, pause, debug),
-  `hud.js`, `scenes.js` (title/menu/options/credits/select/results over an
-  orbiting mode-7 backdrop), `sprites.js` (procedural baking: 16-angle
+  `hud.js`, `scenes.js` (boot/title/menu/options/credits/select/results over
+  an orbiting mode-7 backdrop), `sprites.js` (procedural baking: 16-angle
   pseudo-3D kart sheets, item box, trees, signs), `data.js` (racers, laps).
 
 ## Tuning constants worth knowing

@@ -29,8 +29,9 @@ class AudioSys {
     this.ctx = null;
     this.unlocked = false;
     this.muted = false;
-    this.musicOn = true;
-    this.sfxOn = true;
+    this.musicVol = 1; // 0..1, scaled onto the base gains below
+    this.sfxVol = 1;
+    this.ducked = false;
     this.assetBuffers = new Map(); // key -> ArrayBuffer
     this.decoded = new Map();      // key -> AudioBuffer
     this.seq = null;
@@ -50,10 +51,10 @@ class AudioSys {
       this.master.gain.value = this.muted ? 0 : 1;
       this.master.connect(this.ctx.destination);
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.value = this.musicOn ? 0.55 : 0;
+      this.musicGain.gain.value = this._musicTarget();
       this.musicGain.connect(this.master);
       this.sfxGain = this.ctx.createGain();
-      this.sfxGain.gain.value = this.sfxOn ? 0.7 : 0;
+      this.sfxGain.gain.value = 0.7 * this.sfxVol;
       this.sfxGain.connect(this.master);
       // Shared 1s white-noise buffer for percussion / drift hiss
       const len = this.ctx.sampleRate;
@@ -77,19 +78,23 @@ class AudioSys {
   }
   toggleMute() { this.setMuted(!this.muted); return this.muted; }
 
-  setMusicOn(on) {
-    this.musicOn = on;
-    if (this.musicGain) this.musicGain.gain.setTargetAtTime(on ? 0.55 : 0, this.ctx.currentTime, 0.02);
+  _musicTarget() {
+    return 0.55 * this.musicVol * (this.ducked ? 0.33 : 1);
   }
-  setSfxOn(on) {
-    this.sfxOn = on;
-    if (this.sfxGain) this.sfxGain.gain.setTargetAtTime(on ? 0.7 : 0, this.ctx.currentTime, 0.02);
+
+  setMusicVolume(v) {
+    this.musicVol = v;
+    if (this.musicGain) this.musicGain.gain.setTargetAtTime(this._musicTarget(), this.ctx.currentTime, 0.02);
+  }
+
+  setSfxVolume(v) {
+    this.sfxVol = v;
+    if (this.sfxGain) this.sfxGain.gain.setTargetAtTime(0.7 * v, this.ctx.currentTime, 0.02);
   }
 
   duckMusic(d) {
-    if (this.musicGain && this.musicOn) {
-      this.musicGain.gain.setTargetAtTime(d ? 0.18 : 0.55, this.ctx.currentTime, 0.1);
-    }
+    this.ducked = d;
+    if (this.musicGain) this.musicGain.gain.setTargetAtTime(this._musicTarget(), this.ctx.currentTime, 0.1);
   }
 
   // ---- generic voices ----------------------------------------------------

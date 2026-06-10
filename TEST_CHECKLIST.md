@@ -4,7 +4,11 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 
 ## Automated checks already done this session (headless browser)
 - [x] Game boots with zero console errors/warnings
-- [x] Title → Menu → Select → Race → Results → Menu full loop
+- [x] Retro BIOS boot screen renders (asset report lines), skippable with Enter
+- [x] Boot → Title → Menu → Select → Race → Results → Menu full loop
+- [x] Race HUD shows always-on speedometer (KMH) and FPS readout
+- [x] Music/SFX volume settings (0–100% in 10% steps) apply live and persist
+- [x] Audio unlocks from a mouse click as well as a keypress
 - [x] 60 FPS sustained in race (426x240, debug overlay confirms)
 - [x] Speed cap holds: 230 u/s flat, ~303 only during boost pads
 - [x] AI completes 3 laps (~57s) and the race auto-finishes to results
@@ -16,15 +20,16 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 ## Manual checks needed (need human eyes/ears/hands)
 
 ### Boot & title
-- [ ] Loading bar appears briefly, then title with orbiting track backdrop
-- [ ] Title music (procedural chiptune) starts after first key press
+- [ ] BIOS-style boot screen plays (~3s), Enter skips it after a beat
+- [ ] Title shows orbiting track backdrop after boot
+- [ ] Title music (procedural chiptune) starts after first key press OR click
 - [ ] A kart scrolls across the bottom of the title screen
 
 ### Menus
 - [ ] Arrow keys + Enter navigate; menu blip/select sounds play
 - [ ] Esc backs out of every submenu
 - [ ] Options: display mode switches instantly, scanlines visible in CRT mode
-- [ ] Music/SFX toggles actually silence music/SFX independently
+- [ ] Music/SFX volume steps (left/right) audibly raise/lower levels independently
 - [ ] Credits screen lists asset plan, Esc returns
 
 ### Race — feel (most important manual pass)
@@ -45,6 +50,7 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 ### Race — flow
 - [ ] LAP 2 / FINAL LAP messages + jingles at the line
 - [ ] Position indicator (1ST–4TH) matches what you see
+- [ ] Speedometer reacts to acceleration/grass/boost (turns gold while boosting)
 - [ ] Minimap dots track all four karts
 - [ ] FINISH! → autopilot drives your kart → results within ~3s
 - [ ] Results: standings, times, best lap; Enter → menu, R → rematch

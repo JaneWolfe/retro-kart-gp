@@ -10,14 +10,14 @@ import { buildTrack } from './game/track.js';
 import { Mode7, buildSkyPanorama } from './game/mode7.js';
 import { buildSprites } from './game/sprites.js';
 import { RACERS } from './game/data.js';
-import { TitleScene, MenuScene, ResultsScene } from './game/scenes.js';
+import { BootScene, MenuScene, ResultsScene } from './game/scenes.js';
 import { RaceScene } from './game/race.js';
 
 const PREFS_KEY = 'retro-kart-gp-prefs';
 
 const game = {
   display: new Display(),
-  prefs: { displayMode: 'wide', scanlines: false, music: true, sfx: true, muted: false },
+  prefs: { displayMode: 'wide', scanlines: false, musicVol: 0.7, sfxVol: 0.8, muted: false },
   scene: null,
   debug: false,
   fps: 60,
@@ -65,8 +65,8 @@ const game = {
       this.rebuildSky();
     }
     this.display.setScanlines(p.scanlines);
-    audio.setMusicOn(p.music);
-    audio.setSfxOn(p.sfx);
+    audio.setMusicVolume(p.musicVol);
+    audio.setSfxVolume(p.sfxVol);
     audio.setMuted(p.muted);
   },
 
@@ -119,8 +119,8 @@ async function init() {
   input.init();
   input.onFirstInteraction = () => {
     audio.unlock();
-    audio.setMusicOn(game.prefs.music);
-    audio.setSfxOn(game.prefs.sfx);
+    audio.setMusicVolume(game.prefs.musicVol);
+    audio.setSfxVolume(game.prefs.sfxVol);
     audio.setMuted(game.prefs.muted);
     // restart whatever song the current scene wanted
     if (audio.currentSong) {
@@ -155,7 +155,7 @@ async function init() {
 
   window.rk = game; // console access for debugging
 
-  game.setScene(new TitleScene(game));
+  game.setScene(new BootScene(game));
   requestAnimationFrame(loop);
 }
 

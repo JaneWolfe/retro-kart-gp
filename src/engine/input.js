@@ -49,6 +49,13 @@ class Input {
       const action = KEYMAP[e.code];
       if (action) this.down.delete(action);
     });
+    // Clicks also count as the unlocking gesture (for audio autoplay policy)
+    window.addEventListener('pointerdown', () => {
+      if (!this._interacted) {
+        this._interacted = true;
+        this.onFirstInteraction?.();
+      }
+    });
     // Avoid stuck keys when the window loses focus
     window.addEventListener('blur', () => this.down.clear());
   }
