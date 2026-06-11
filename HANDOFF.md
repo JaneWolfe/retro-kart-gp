@@ -1,4 +1,32 @@
-# HANDOFF — Retro Kart GP (2026-06-10, Day 1 complete + Day 2 track rules)
+# HANDOFF — Retro Kart GP (2026-06-11: Sunset Loop GP world update)
+
+## NEW: Sunset Loop GP (full kart-game level)
+
+The world grew to 4096x4096 (`WORLD` in track.js; mode7.js derives its
+sampling mask from the texture size). One lap ≈ 12,800 units ≈ 55s
+(AI best laps 57–60s, races ~2.6 min). Layout in driving order: village
+boulevard (start banner, grandstand, solid houses, lamps) → forest S-curves →
+top-right corner → tunnel through a painted hill (portal billboards, interior
+lamps, full-screen ceiling/dim overlay via `RaceScene.renderTunnelOverlay`,
+tube walls at road-edge ±68) → hairpin → ramp straight (JUMP strip launches
+airborne arc over a DIRT gap) → U-bend → lakeside → finish. Two dirt
+shortcuts: A cuts the U-bend, B is a jump-entry alley between houses cutting
+the final corner. The mid-track checkpoint (`passedHalf`) sits inside the
+tunnel, so laps can't be cheated around it.
+
+New systems: surfaces DIRT (cap ×0.8) and JUMP (blue channel of the surface
+map; walls stay in green); airborne kart state (`z`/`vz`, gravity 520,
+heading locked, no surface caps in air); `nearestSampleIdx` widens its search
+window ±24→±90 on dirt/air so shortcuts can't break progress tracking;
+`resolveSolidCollisions` makes houses/trees/posts solid (fixes old known bug
+2); `buildWallSegments` takes shortcut openings + skip-ranges (no barriers
+through the village — houses line the street there). All verified headless:
+probes for surface classification, corridor wall scan, jump arc (peak ~56,
+clears the gap), shortcut progress trace, house ram, 60 FPS held.
+
+---
+
+# Previous handoff (2026-06-10, Day 1 complete + Day 2 track rules)
 
 ## State: playable vertical slice, verified in-browser
 
@@ -59,16 +87,18 @@ No assets are downloaded yet; everything on screen/speaker is procedural
 
 ## Known bugs / honest limitations
 
-1. **Drift handling untested by a human.** Physics verified numerically only.
-   The outward-fling force (36 u/s²) and drift turn rates may need tuning.
-2. Trees and arrow signs have **no collision** — karts drive through them.
-   (Barriers DO collide as of Day 2; trees sit outside the barriers anyway.)
-   Barrier self-intersection at tight corners initially dropped wall
-   fragments onto the racing line (felt like invisible bounces at the
-   chicane) — fixed by culling barrier points that fall closer than
-   WALL_OFF to any centerline sample, which leaves intentional runoff gaps
-   at sharp corner insides. Verified: zero wall cells within ±95 of the
-   centerline, zero wall hits over a full autopilot race.
+1. **Drift handling and the new level are untested by a human.** Physics and
+   layout verified numerically/visually headless; jump feel, shortcut
+   worthiness, and tunnel pacing need a real driver.
+2. ~~Trees have no collision~~ — fixed by `resolveSolidCollisions` (houses,
+   trees, lamps, banner/portal posts are all solid). Signs remain
+   non-solid decorations. Banner/portal arches are camera-facing billboards:
+   they skew when passed at an angle (accepted retro illusion). House
+   sprites' visual edges may kiss the curb at max size; their collision
+   circles stay off the lane (verified ≥63 units from centerline vs 60 lane
+   half-width).
+3. Shortcut B's alley is tight by design; AI never takes shortcuts (classic
+   behavior, also keeps them honest).
 3. Item roulette always resolves to Turbo (single item type, by design today,
    but the flashing roulette implies variety that isn't there).
 4. AI never drifts and has no engine audio (player only).

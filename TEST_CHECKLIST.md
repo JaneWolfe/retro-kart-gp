@@ -14,6 +14,14 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 - [x] HUD shows checkpoint validity lamp (CP -- / CP OK) under the lap counter
 - [x] Debug overlay shows surface name, checkpoint state, and wall-hit count
 - [x] CONTROLS page in the main menu lists every binding
+- [x] Sunset Loop GP world (4096 map): village + banner + grandstand, forest,
+      tunnel (overlay + portals + tube walls verified), hairpin, ramp jump
+      (launch -> clears dirt gap -> lands on road), lake, 60 FPS held
+- [x] Both shortcuts surface-classified DIRT end-to-end; driving one slides
+      sampleIdx smoothly with no lap glitches, checkpoint flag intact
+- [x] Solid decor collision: full-speed ram into a house stops at the
+      collision ring, never clips inside
+- [x] AI completes laps on the new layout (best laps ~57-60s)
 - [x] 60 FPS sustained in race (426x240, debug overlay confirms)
 - [x] Speed cap holds: 230 u/s flat, ~303 only during boost pads
 - [x] AI completes 3 laps (~57s) and the race auto-finishes to results
@@ -47,7 +55,18 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 - [ ] Driving onto grass slows you down hard + dust + engine wobble
 - [ ] Hitting a barrier bounces you back with a thud (does it feel fair?)
 - [ ] Barrier visuals look right at the tightest corners (no stripe glitches)
-- [ ] CP lamp flips to OK at mid-track, back to -- after crossing the line
+- [ ] CP lamp flips to OK at mid-track (inside the tunnel), back to -- at the line
+
+### Sunset Loop GP world (new — feel pass wanted)
+- [ ] Ramp jump feels good at full speed; landing short into the dirt gap
+      punishes but doesn't feel broken
+- [ ] Both shortcuts are findable and worth it with a clean line/boost
+      (A: dirt chord across the U-bend; B: jump-entry alley before the finish)
+- [ ] Tunnel: overlay fades in/out smoothly, lamps pass by, tube walls bounce
+- [ ] Village houses feel solid but never block the racing line
+- [ ] Banner/portal arches read OK head-on (they're billboards — known skew
+      when passed at an angle)
+- [ ] Minimap reads: lake blob, brown shortcut lines, darker tunnel section
 - [ ] Boost pads (orange chevrons) give a burst + sound
 - [ ] Item box pickup → flashing slot → turbo; X/Right Shift fires it
 - [ ] R recovers to the track centerline facing forward

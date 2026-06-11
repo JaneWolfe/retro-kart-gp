@@ -141,6 +141,8 @@ class AudioSys {
       case 'count': this._tone({ f0: 440, dur: 0.12, vol: 0.45 }); break;
       case 'go': this._tone({ f0: 880, dur: 0.35, vol: 0.5 }); break;
       case 'hop': this._tone({ f0: 300, f1: 520, dur: 0.08, type: 'triangle', vol: 0.3 }); break;
+      case 'jump': this._tone({ f0: 260, f1: 720, dur: 0.22, type: 'triangle', vol: 0.32 }); this._noise({ dur: 0.18, vol: 0.12, type: 'highpass', freq: 3000 }); break;
+      case 'land': this._noise({ dur: 0.12, vol: 0.3, type: 'lowpass', freq: 500 }); this._tone({ f0: 140, f1: 70, dur: 0.09, type: 'triangle', vol: 0.3 }); break;
       case 'boost': this._tone({ f0: 180, f1: 900, dur: 0.35, type: 'sawtooth', vol: 0.35 }); break;
       case 'spark': this._tone({ f0: 1200, f1: 1800, dur: 0.06, vol: 0.2 }); break;
       case 'item_tick': this._tone({ f0: 1046, dur: 0.03, vol: 0.18 }); break;

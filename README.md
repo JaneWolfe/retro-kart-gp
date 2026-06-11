@@ -34,6 +34,14 @@ Two internal resolutions, selectable in Options: 426x240 retro widescreen
 with integer device-pixel scaling and `image-rendering: pixelated`, so it
 stays sharp on hi-DPI monitors.
 
+## The track: Sunset Loop GP
+
+One full kart-game level (~55s laps, 3-lap races): a village boulevard under
+a SUNSET GP banner, forest S-curves, a tunnel through the hill, a hairpin, a
+ramp jump over a dirt gap, a lakeside run — plus two risky dirt shortcuts
+(slower surface, shorter line) and boost pads. Buildings, trees, and posts
+are solid; barriers bounce you back on the rest of the lap.
+
 ## Assets
 
 The game is fully playable with zero downloaded assets — all art and audio

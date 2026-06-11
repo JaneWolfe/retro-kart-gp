@@ -61,7 +61,7 @@ export class BootScene {
     const lines = [
       [0.0, 'BIG B SYSTEMS', '#4fe3c0', 2],
       [0.2, 'RETRO KART BIOS V1.0', '#9090a8', 1],
-      [0.6, 'MEM CHECK........ 2048K OK', '#7df07d', 1],
+      [0.6, 'MEM CHECK........ 4096K OK', '#7df07d', 1],
       [1.0, `EXTERNAL ASSETS.. ${assets.found}/${assets.total}`, '#7df07d', 1],
       [1.4, 'PROCEDURAL FX.... READY', '#7df07d', 1],
       [1.8, 'SOUND............ READY', '#7df07d', 1],

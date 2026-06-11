@@ -2,10 +2,6 @@
 // ground texture into an ImageData buffer. The texture wraps, so driving off
 // the map shows tiled grass.
 
-const TEX_SIZE = 2048;
-const TEX_MASK = 2047;
-const TEX_SHIFT = 11;
-
 export const CAMERA_MODES = [
   { name: 'NEAR', back: 130, height: 38 },
   { name: 'FAR', back: 165, height: 52 },
@@ -14,9 +10,14 @@ export const CAMERA_MODES = [
 
 export class Mode7 {
   constructor(textureCanvas) {
+    // texture must be square with a power-of-two size (the sampler wraps
+    // coordinates with a bitmask)
+    const size = textureCanvas.width;
+    this.texMask = size - 1;
+    this.texShift = Math.log2(size);
     const g = textureCanvas.getContext('2d');
     this.tex = new Uint32Array(
-      g.getImageData(0, 0, TEX_SIZE, TEX_SIZE).data.buffer
+      g.getImageData(0, 0, size, size).data.buffer
     );
     this.w = 0;
   }
@@ -36,7 +37,7 @@ export class Mode7 {
 
   // cam: {x, y, angle, height}
   render(ctx, cam) {
-    const { w, floorH, focal, buf, tex } = this;
+    const { w, floorH, focal, buf, tex, texMask, texShift } = this;
     const cosA = Math.cos(cam.angle), sinA = Math.sin(cam.angle);
     const halfW = w / 2;
     let o = 0;
@@ -48,7 +49,7 @@ export class Mode7 {
       let wx = cam.x + cosA * d - stepX * halfW;
       let wy = cam.y + sinA * d - stepY * halfW;
       for (let sx = 0; sx < w; sx++) {
-        buf[o++] = tex[((wy & TEX_MASK) << TEX_SHIFT) | (wx & TEX_MASK)];
+        buf[o++] = tex[((wy & texMask) << texShift) | (wx & texMask)];
         wx += stepX;
         wy += stepY;
       }

@@ -5,7 +5,7 @@ import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { drawText } from '../engine/font.js';
 import { angleLerp, clamp, damp, TAU } from '../engine/math.js';
-import { Kart, resolveKartCollisions } from './kart.js';
+import { Kart, resolveKartCollisions, resolveSolidCollisions } from './kart.js';
 import { AIController } from './ai.js';
 import { CAMERA_MODES, drawSky } from './mode7.js';
 import { drawHUD, drawCountdown, drawPauseMenu } from './hud.js';
@@ -63,6 +63,7 @@ export class RaceScene {
     this.particles = [];
     this.wallHits = 0;   // player barrier impacts (debug overlay)
     this.wallSfxT = 0;
+    this.tunnelT = 0;    // tunnel overlay fade 0..1
     this.camMode = 0;
     this.cam = {
       x: this.player.x, y: this.player.y,
@@ -170,6 +171,11 @@ export class RaceScene {
     for (const h of hits) {
       if (h.a.isPlayer || h.b.isPlayer) audio.sfx('thud');
     }
+    resolveSolidCollisions(this.karts, this.track.solids);
+
+    // tunnel overlay follows the player
+    const inTunnel = this.playerInTunnel();
+    this.tunnelT = clamp(this.tunnelT + (inTunnel ? 5 : -5) * dt, 0, 1);
 
     this.updateItemBoxes(dt);
     this.updateParticles(dt);
@@ -211,11 +217,18 @@ export class RaceScene {
     }
   }
 
+  playerInTunnel() {
+    const idx = this.player.sampleIdx;
+    return this.track.tunnels.some((t) => idx >= t.a && idx <= t.b);
+  }
+
   handleKartEvents(kart) {
     for (const ev of kart.events) {
       if (kart.isPlayer) {
         switch (ev) {
           case 'hop': audio.sfx('hop'); break;
+          case 'jump': audio.sfx('jump'); break;
+          case 'land': audio.sfx('land'); break;
           case 'boost': audio.sfx('boost'); break;
           case 'spark': audio.sfx('spark'); break;
           case 'item_get': audio.sfx('item_get'); break;
@@ -233,6 +246,9 @@ export class RaceScene {
       }
       // particles for everyone
       if (ev === 'boost') this.emitBoostFlames(kart);
+      if (ev === 'land') {
+        for (let i = 0; i < 5; i++) this.emitDust(kart);
+      }
       if (ev === 'wall') {
         if (kart.isPlayer) {
           this.wallHits++;
@@ -372,11 +388,14 @@ export class RaceScene {
     const sprites = [];
     const cam = this.cam;
     for (const d of this.track.decor) {
+      if (d.invisible) continue;
       const p = this.mode7.project(cam, d.x, d.y);
-      if (!p || p.x < -60 || p.x > W + 60) continue;
-      const img = d.type === 'tree' ? this.sprites.trees[d.variant]
-        : d.dir < 0 ? this.sprites.signL : this.sprites.signR;
-      sprites.push({ p, img, worldSize: d.size, yOff: 0 });
+      if (!p || p.x < -120 || p.x > W + 120) continue;
+      const img = this.decorSprite(d);
+      if (!img) continue;
+      let yOff = 0;
+      if (d.type === 'balloons') yOff = -6 - Math.sin(this.time * 1.8 + d.x * 0.01) * 4;
+      sprites.push({ p, img, worldSize: d.size, yOff });
     }
     for (const box of this.track.itemBoxes) {
       if (box.respawn > 0) continue;
@@ -415,6 +434,8 @@ export class RaceScene {
       }
     }
 
+    if (this.tunnelT > 0.02) this.renderTunnelOverlay(ctx, W, H);
+
     drawHUD(ctx, this, W, H);
     if (this.phase === 'countdown' || (this.phase === 'racing' && this.raceTime < 1)) {
       drawCountdown(ctx, Math.max(0, Math.ceil(this.countdownT)), W, H);
@@ -422,6 +443,47 @@ export class RaceScene {
     if (this.paused) drawPauseMenu(ctx, PAUSE_ITEMS, this.pauseSel, W, H);
 
     if (game.debug) this.renderDebug(ctx, W, H);
+  }
+
+  decorSprite(d) {
+    const s = this.sprites;
+    switch (d.type) {
+      case 'tree': return s.trees[d.variant];
+      case 'sign': return d.dir < 0 ? s.signL : s.signR;
+      case 'house': return s.houses[d.variant];
+      case 'grandstand': return s.grandstand;
+      case 'banner': return s.banner;
+      case 'portal': return s.portal;
+      case 'balloons': return s.balloons;
+      case 'lamp': return s.lamp;
+      case 'bush': return s.bushes[(d.x | 0) % 2];
+      default: return null;
+    }
+  }
+
+  // Dark ceiling + side shading while driving through the hill
+  renderTunnelOverlay(ctx, W, H) {
+    const hy = this.mode7.horizonY;
+    if (!this._tunnelFx || this._tunnelFx.w !== W) {
+      const side = W * 0.2;
+      const left = ctx.createLinearGradient(0, 0, side, 0);
+      left.addColorStop(0, 'rgba(12,9,20,0.95)');
+      left.addColorStop(1, 'rgba(12,9,20,0)');
+      const right = ctx.createLinearGradient(W, 0, W - side, 0);
+      right.addColorStop(0, 'rgba(12,9,20,0.95)');
+      right.addColorStop(1, 'rgba(12,9,20,0)');
+      this._tunnelFx = { w: W, side, left, right };
+    }
+    ctx.globalAlpha = this.tunnelT;
+    ctx.fillStyle = '#120d1c';
+    ctx.fillRect(0, 0, W, hy + 5);
+    ctx.fillStyle = this._tunnelFx.left;
+    ctx.fillRect(0, 0, this._tunnelFx.side, H);
+    ctx.fillStyle = this._tunnelFx.right;
+    ctx.fillRect(W - this._tunnelFx.side, 0, this._tunnelFx.side, H);
+    ctx.fillStyle = 'rgba(8,6,16,0.28)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
   }
 
   drawKart(ctx, kart, p) {
@@ -434,13 +496,15 @@ export class RaceScene {
 
     const sc = (KART_WORLD_SIZE * p.scale) / KART_FW;
     const w = KART_FW * sc, h = KART_FH * sc;
+    const lift = kart.zOff + kart.z; // hop + ramp-jump height
     const x = Math.round(p.x - w / 2);
-    const y = Math.round(p.y - h - kart.zOff * sc);
+    const y = Math.round(p.y - h - lift * sc);
 
-    // shadow
+    // shadow stays on the ground, shrinking as the kart flies
+    const shScale = 1 / (1 + lift * 0.02);
     ctx.fillStyle = 'rgba(10,10,20,0.4)';
     ctx.beginPath();
-    ctx.ellipse(p.x, p.y - 1, w * 0.34, Math.max(1.5, h * 0.10), 0, 0, TAU);
+    ctx.ellipse(p.x, p.y - 1, w * 0.34 * shScale, Math.max(1.5, h * 0.10 * shScale), 0, 0, TAU);
     ctx.fill();
 
     // drift sparks under the wheels
@@ -472,6 +536,7 @@ export class RaceScene {
       `IDX ${k.sampleIdx}/${N_SAMPLES} LAP ${k.lap}`,
       `CHECKPOINT ${k.passedHalf ? 'OK' : 'PENDING'}`,
       `WALL HITS ${this.wallHits}`,
+      `AIR ${k.z.toFixed(0)} TUNNEL ${this.playerInTunnel() ? 'Y' : 'N'}`,
       `DRIFT ${k.drift ? k.drift.charge.toFixed(2) : '-'} BOOST ${k.boostT.toFixed(2)}`,
       `CAM ${CAMERA_MODES[this.camMode].name}`,
     ];

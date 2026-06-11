@@ -10,6 +10,9 @@ const BRAKE = 420;
 const REVERSE_MAX = 70;
 const DRAG = 1.1;             // exponential drag rate
 const TURN_RATE = 2.3;        // rad/s at full lock
+const GRAVITY = 520;          // u/s^2 while airborne (ramp jumps)
+const DIRT_SPEED = 0.8;       // dirt shortcut speed-cap factor
+const GRASS_SPEED = 0.45;
 
 export class Kart {
   constructor({ x, y, heading, racer, isPlayer = false, sampleIdx = 0 }) {
@@ -22,6 +25,9 @@ export class Kart {
     this.steerVis = 0;       // smoothed steer for sprite frame
     this.hopT = 0;
     this.zOff = 0;           // visual hop height
+    this.z = 0;              // airborne height (ramp jumps)
+    this.vz = 0;
+    this.jumpCooldown = 0;
     this.drift = null;       // { dir, charge, level }
     this.boostT = 0;
     this.padCooldown = 0;
@@ -45,10 +51,14 @@ export class Kart {
     this.events = [];        // per-frame audio/FX events consumed by the scene
   }
 
+  get airborne() { return this.z > 0; }
+
   get maxSpeed() {
     let m = BASE_MAX_SPEED * this.racer.stats.speed * this.speedScale;
     if (this.boostT > 0) m *= 1.32;
-    else if (this.surface === SURF.GRASS) m *= 0.45;
+    else if (this.airborne) { /* no surface penalty in the air */ }
+    else if (this.surface === SURF.GRASS) m *= GRASS_SPEED;
+    else if (this.surface === SURF.DIRT) m *= DIRT_SPEED;
     return m;
   }
 
@@ -62,6 +72,7 @@ export class Kart {
     // ---- timers ----
     if (this.boostT > 0) this.boostT -= dt;
     if (this.padCooldown > 0) this.padCooldown -= dt;
+    if (this.jumpCooldown > 0) this.jumpCooldown -= dt;
     if (this.hopT > 0) {
       this.hopT -= dt;
       this.zOff = Math.sin((1 - this.hopT / 0.26) * Math.PI) * 5;
@@ -69,16 +80,39 @@ export class Kart {
     }
     if (racing) this.raceTime += dt;
 
+    // ---- airborne arc (ramp jumps) ----
+    if (this.z > 0 || this.vz !== 0) {
+      this.z += this.vz * dt;
+      this.vz -= GRAVITY * dt;
+      if (this.z <= 0) {
+        this.z = 0;
+        this.vz = 0;
+        this.events.push('land');
+      }
+    }
+
     // ---- surface ----
     this.surface = track.surfaceAt(this.x | 0, this.y | 0);
-    if (this.surface === SURF.BOOST && this.padCooldown <= 0 && racing) {
+    if (this.surface === SURF.BOOST && this.padCooldown <= 0 && !this.airborne && racing) {
       this.boostT = Math.max(this.boostT, 0.85);
       this.padCooldown = 1.2;
       this.events.push('boost');
     }
+    // ramp launch
+    if (this.surface === SURF.JUMP && !this.airborne && this.jumpCooldown <= 0 && racing) {
+      const sp = Math.hypot(this.vx, this.vy);
+      if (sp > BASE_MAX_SPEED * 0.3) {
+        this.vz = 110 + sp * 0.42;
+        this.z = 0.01;
+        this.jumpCooldown = 0.5;
+        this.drift = null;
+        this.hopT = 0;
+        this.events.push('jump');
+      }
+    }
 
     // ---- drift state machine ----
-    if (racing && ctl.driftPressed && this.hopT <= 0 && !this.drift && Math.abs(this.speed) > 30) {
+    if (racing && ctl.driftPressed && this.hopT <= 0 && !this.drift && !this.airborne && Math.abs(this.speed) > 30) {
       this.hopT = 0.26;
       this.events.push('hop');
     }
@@ -105,7 +139,9 @@ export class Kart {
     // ---- steering ----
     const speedMag = Math.hypot(this.vx, this.vy);
     const speedFactor = clamp(speedMag / 55, 0, 1) * (1 - clamp(speedMag / (BASE_MAX_SPEED * 1.4), 0, 1) * 0.35);
-    if (this.drift) {
+    if (this.airborne) {
+      // heading locked in the air
+    } else if (this.drift) {
       const d = this.drift.dir;
       const turn = d * (1.35 + 0.85 * clamp(ctl.steer * d, -0.6, 1));
       this.heading += turn * TURN_RATE * 0.78 * speedFactor * dt;
@@ -114,7 +150,8 @@ export class Kart {
       this.heading += ctl.steer * TURN_RATE * speedFactor * grip * rev * dt;
     }
     this.heading = wrapAngle(this.heading);
-    this.steerVis += ((this.drift ? this.drift.dir * 1.6 : ctl.steer) - this.steerVis) * Math.min(1, 10 * dt);
+    const steerTarget = this.airborne ? 0 : (this.drift ? this.drift.dir * 1.6 : ctl.steer);
+    this.steerVis += (steerTarget - this.steerVis) * Math.min(1, 10 * dt);
 
     // ---- forward dynamics ----
     const cosH = Math.cos(this.heading), sinH = Math.sin(this.heading);
@@ -136,10 +173,12 @@ export class Kart {
     fwd *= Math.exp(-DRAG * dt * (ctl.throttle > 0 || this.boostT > 0 ? 0.25 : 1));
     if (fwd > cap) fwd += (cap - fwd) * Math.min(1, 6 * dt);
 
-    // lateral grip (drifting slides, grass slides a bit)
+    // lateral grip (drifting slides, grass/dirt slide a bit, air has none)
     let gripRate = 9 * grip;
-    if (this.drift) gripRate = 2.1;
+    if (this.airborne) gripRate = 0.1;
+    else if (this.drift) gripRate = 2.1;
     else if (this.surface === SURF.GRASS) gripRate = 4.5;
+    else if (this.surface === SURF.DIRT) gripRate = 6;
     lat *= Math.exp(-gripRate * dt);
     // drifting flings you outward slightly
     if (this.drift) lat -= this.drift.dir * 36 * dt;
@@ -193,8 +232,11 @@ export class Kart {
     }
 
     // ---- progress / laps ----
+    // shortcuts/jumps can skip samples faster than the cheap local search
+    // tolerates, so widen it while off the asphalt racing line
+    const wide = this.airborne || this.surface === SURF.DIRT || this.surface === SURF.JUMP;
     const prev = this.sampleIdx;
-    this.sampleIdx = nearestSampleIdx(track, this.x, this.y, prev);
+    this.sampleIdx = nearestSampleIdx(track, this.x, this.y, prev, wide);
     const half = N_SAMPLES >> 1;
     if (Math.abs(this.sampleIdx - half) < 60) this.passedHalf = true;
     if (racing && !this.finished) {
@@ -231,6 +273,33 @@ export class Kart {
     this.vx = this.vy = this.speed = 0;
     this.drift = null;
     this.wrongWayT = 0;
+  }
+}
+
+// Karts vs solid decor (houses, trees, posts...): push out + reflect,
+// same flavor as the barrier bounce.
+export function resolveSolidCollisions(karts, solids) {
+  for (const k of karts) {
+    for (const s of solids) {
+      const R = s.radius + 10;
+      const dx = k.x - s.x, dy = k.y - s.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= R * R || d2 === 0) continue;
+      const d = Math.sqrt(d2);
+      const nx = dx / d, ny = dy / d;
+      k.x = s.x + nx * R;
+      k.y = s.y + ny * R;
+      const vn = k.vx * nx + k.vy * ny;
+      if (vn < 0) {
+        k.vx -= 1.4 * vn * nx;
+        k.vy -= 1.4 * vn * ny;
+        k.vx *= 0.8;
+        k.vy *= 0.8;
+        k.speed *= 0.8;
+        k.drift = null;
+        if (-vn > 40) k.events.push('wall');
+      }
+    }
   }
 }
 
