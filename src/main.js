@@ -17,7 +17,10 @@ const PREFS_KEY = 'retro-kart-gp-prefs';
 
 const game = {
   display: new Display(),
-  prefs: { displayMode: 'wide', scanlines: false, musicVol: 0.7, sfxVol: 0.8, muted: false },
+  prefs: {
+    displayMode: 'wide', scanlines: false, musicVol: 0.7, sfxVol: 0.8, muted: false,
+    difficulty: 'NORMAL', laps: 3, reducedMotion: false,
+  },
   scene: null,
   debug: false,
   fps: 60,
@@ -31,12 +34,12 @@ const game = {
     scene.enter?.();
   },
 
-  startRace(racerId) {
-    this.setScene(new RaceScene(this, { racerId }));
+  startRace(racerId, mode = 'gp') {
+    this.setScene(new RaceScene(this, { racerId, mode }));
   },
 
-  showResults(standings, racerId) {
-    this.setScene(new ResultsScene(this, standings, racerId));
+  showResults(standings, racerId, mode = 'gp') {
+    this.setScene(new ResultsScene(this, standings, racerId, mode));
   },
 
   quitToMenu() {
@@ -176,6 +179,7 @@ function loop(now) {
   acc += dt;
   let steps = 0;
   while (acc >= STEP && steps < 5) {
+    input.pollGamepad();
     handleGlobalKeys();
     game.scene.update(STEP);
     if (game.toastT > 0) game.toastT -= STEP;

@@ -2,7 +2,6 @@
 
 import { drawText, textWidth } from '../engine/font.js';
 import { formatTime } from '../engine/math.js';
-import { TOTAL_LAPS } from './data.js';
 
 const ORDINALS = ['1ST', '2ND', '3RD', '4TH'];
 const ORD_COLORS = ['#ffd83d', '#cfcfd8', '#d89a5a', '#9ab0c8'];
@@ -10,14 +9,22 @@ const ORD_COLORS = ['#ffd83d', '#cfcfd8', '#d89a5a', '#9ab0c8'];
 export function drawHUD(ctx, race, W, H) {
   const player = race.player;
 
-  // position (top-left) + FPS under it
-  const pos = race.positionOf(player);
-  drawText(ctx, ORDINALS[pos], 8, 8, { scale: 3, color: ORD_COLORS[pos], outline: '#181828' });
-  drawText(ctx, `${race.game.fps | 0} FPS`, 8, 26, { color: '#7a8a90', shadow: '#181828' });
+  // top-left: position (GP) or lap times (Time Trial), FPS under it
+  if (race.mode === 'tt') {
+    const last = player.lapTimes.length ? player.lapTimes[player.lapTimes.length - 1] : null;
+    const best = player.lapTimes.length ? Math.min(...player.lapTimes) : null;
+    drawText(ctx, `LAST ${formatTime(last)}`, 8, 8, { color: '#e8e8f0', shadow: '#181828' });
+    drawText(ctx, `BEST ${formatTime(best)}`, 8, 17, { color: '#4fe3c0', shadow: '#181828' });
+    drawText(ctx, `${race.game.fps | 0} FPS`, 8, 27, { color: '#7a8a90', shadow: '#181828' });
+  } else {
+    const pos = race.positionOf(player);
+    drawText(ctx, ORDINALS[pos], 8, 8, { scale: 3, color: ORD_COLORS[pos], outline: '#181828' });
+    drawText(ctx, `${race.game.fps | 0} FPS`, 8, 26, { color: '#7a8a90', shadow: '#181828' });
+  }
 
   // lap (top-right) + checkpoint validity lamp under it
-  const lap = Math.min(Math.max(player.lap, 1), TOTAL_LAPS);
-  drawText(ctx, `LAP ${lap}/${TOTAL_LAPS}`, W - 8, 9, { align: 'right', scale: 2, color: '#fff', outline: '#181828' });
+  const lap = Math.min(Math.max(player.lap, 1), race.totalLaps);
+  drawText(ctx, `LAP ${lap}/${race.totalLaps}`, W - 8, 9, { align: 'right', scale: 2, color: '#fff', outline: '#181828' });
   drawText(ctx, player.passedHalf ? 'CP OK' : 'CP --', W - 8, 26, {
     align: 'right',
     color: player.passedHalf ? '#7df07d' : '#7a8a90',
@@ -32,23 +39,28 @@ export function drawHUD(ctx, race, W, H) {
     });
   }
 
-  // item slot (bottom-left)
-  ctx.fillStyle = 'rgba(16,16,32,0.7)';
-  ctx.fillRect(7, H - 27, 22, 22);
-  ctx.strokeStyle = '#cfcfd8';
-  ctx.strokeRect(7.5, H - 26.5, 21, 21);
-  if (player.itemRoll > 0) {
-    if (Math.floor(race.time * 12) % 2 === 0) {
+  // item slot (bottom-left) — hidden in Time Trial
+  let speedX = 34;
+  if (race.itemsEnabled) {
+    ctx.fillStyle = 'rgba(16,16,32,0.7)';
+    ctx.fillRect(7, H - 27, 22, 22);
+    ctx.strokeStyle = '#cfcfd8';
+    ctx.strokeRect(7.5, H - 26.5, 21, 21);
+    if (player.itemRoll > 0) {
+      if (race.calm || Math.floor(race.time * 12) % 2 === 0) {
+        ctx.drawImage(race.sprites.bolt, 12, H - 22);
+      }
+    } else if (player.item === 'turbo') {
       ctx.drawImage(race.sprites.bolt, 12, H - 22);
     }
-  } else if (player.item === 'turbo') {
-    ctx.drawImage(race.sprites.bolt, 12, H - 22);
+  } else {
+    speedX = 8;
   }
 
-  // speedometer (next to the item slot; world units scaled to a kmh-ish number)
+  // speedometer (world units scaled to a kmh-ish number)
   const kmh = Math.round(Math.hypot(player.vx, player.vy) * 0.62);
-  drawText(ctx, String(kmh), 34, H - 24, { scale: 2, color: player.boostT > 0 ? '#ffd83d' : '#fff', outline: '#181828' });
-  drawText(ctx, 'KMH', 34, H - 12, { color: '#9090a8', shadow: '#181828' });
+  drawText(ctx, String(kmh), speedX, H - 24, { scale: 2, color: player.boostT > 0 ? '#ffd83d' : '#fff', outline: '#181828' });
+  drawText(ctx, 'KMH', speedX, H - 12, { color: '#9090a8', shadow: '#181828' });
 
   // minimap (bottom-right)
   const mm = race.track.minimap;
@@ -76,8 +88,8 @@ export function drawHUD(ctx, race, W, H) {
     ctx.globalAlpha = 1;
   }
 
-  // wrong way warning
-  if (player.wrongWayT > 1.2 && Math.floor(race.time * 3) % 2 === 0) {
+  // wrong way warning (steady, not blinking, when reduced motion is on)
+  if (player.wrongWayT > 1.2 && (race.calm || Math.floor(race.time * 3) % 2 === 0)) {
     drawText(ctx, 'WRONG WAY!', W / 2, H * 0.45, { align: 'center', scale: 2, color: '#ff5050', outline: '#181828' });
   }
 }

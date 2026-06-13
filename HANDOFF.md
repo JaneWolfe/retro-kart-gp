@@ -1,4 +1,27 @@
-# HANDOFF — Retro Kart GP (2026-06-11: Sunset Loop GP world update)
+# HANDOFF — Retro Kart GP (2026-06-13: Phase A game shell complete)
+
+## NEW: Phase A (roadmap) — modes, options, gamepad, deployed
+
+- Live at <https://janewolfe.github.io/retro-kart-gp/> (repo is now PUBLIC —
+  required for Pages on the free plan; relative asset paths already worked
+  under the /retro-kart-gp/ subpath).
+- Flow: Menu → Mode select (GRAND PRIX / TIME TRIAL) → Kart select →
+  Track select (Sunset Loop GP + two locked placeholder cards that buzz) →
+  Race. Time Trial = solo, no item boxes, LAST/BEST lap HUD top-left,
+  per-lap results screen (R retries with the same mode).
+- New persisted options: DIFFICULTY (EASY/NORMAL/HARD →
+  `DIFFICULTY_TUNING` in data.js: AI skill + rubber-band strength/clamps),
+  LAPS (1/3/5 → `race.totalLaps`, `TOTAL_LAPS` constant removed),
+  REDUCED MOTION (fewer particles, tighter camera damp, no blinking text).
+- Gamepad (input.js `pollGamepad`, standard mapping): stick/dpad steer+nav,
+  A = select+gas ('accel' alias so menus don't scroll), B = brake only
+  (deliberately NOT 'back' — it would pause mid-race), X/Y item, bumpers
+  drift, LT brake, RT gas, Select = back, Start = pause. Verified by
+  stubbing navigator.getGamepads. NOT yet tested with a physical pad.
+
+---
+
+# Previous handoff (2026-06-11: Sunset Loop GP world update)
 
 ## NEW: Sunset Loop GP (full kart-game level)
 

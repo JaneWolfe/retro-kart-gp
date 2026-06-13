@@ -10,7 +10,7 @@ import { AIController } from './ai.js';
 import { CAMERA_MODES, drawSky } from './mode7.js';
 import { drawHUD, drawCountdown, drawPauseMenu } from './hud.js';
 import { KART_FW, KART_FH, KART_FRAMES } from './sprites.js';
-import { RACERS, TOTAL_LAPS } from './data.js';
+import { RACERS, DIFFICULTY_TUNING } from './data.js';
 import { N_SAMPLES, SURF, SURF_NAMES } from './track.js';
 
 const KART_WORLD_SIZE = 30; // world units across one kart sprite
@@ -19,9 +19,10 @@ const PAUSE_ITEMS = ['RESUME', 'RESTART', 'QUIT TO MENU'];
 const SPARK_COLORS = [null, '#4fd0ff', '#ffb030'];
 
 export class RaceScene {
-  constructor(game, { racerId }) {
+  constructor(game, { racerId, mode = 'gp' }) {
     this.game = game;
     this.racerId = racerId;
+    this.mode = mode; // 'gp' | 'tt'
   }
 
   enter() {
@@ -29,9 +30,13 @@ export class RaceScene {
     this.track = game.track;
     this.mode7 = game.mode7;
     this.sprites = game.sprites;
+    this.totalLaps = game.prefs.laps || 3;
+    this.itemsEnabled = this.mode !== 'tt';
+    this.tuning = DIFFICULTY_TUNING[game.prefs.difficulty] || DIFFICULTY_TUNING.NORMAL;
+    this.calm = !!game.prefs.reducedMotion;
 
     const playerRacer = RACERS.find((r) => r.id === this.racerId) || RACERS[0];
-    const others = RACERS.filter((r) => r !== playerRacer);
+    const others = this.mode === 'tt' ? [] : RACERS.filter((r) => r !== playerRacer);
     const lineup = [playerRacer, ...others];
     const grid = this.track.startGrid(lineup.length);
 
@@ -42,7 +47,7 @@ export class RaceScene {
     this.player = this.karts[0];
     this.ai = new Map();
     this.karts.slice(1).forEach((k, i) => {
-      this.ai.set(k, new AIController(k, this.track, 0.93 + i * 0.05, i + 1));
+      this.ai.set(k, new AIController(k, this.track, this.tuning.skill + i * 0.04, i + 1));
     });
     this.autopilot = null; // takes over the player after the finish line
 
@@ -143,8 +148,8 @@ export class RaceScene {
       let ctl;
       if (kart.isPlayer && !this.autopilot) {
         ctl = {
-          throttle: input.isDown('up') ? 1 : 0,
-          brake: input.isDown('down') ? 1 : 0,
+          throttle: input.isDown('up') || input.isDown('accel') ? 1 : 0,
+          brake: input.isDown('down') || input.isDown('brake') ? 1 : 0,
           steer: (input.isDown('right') ? 1 : 0) - (input.isDown('left') ? 1 : 0),
           drift: input.isDown('drift'),
           driftPressed: input.justPressed('drift'),
@@ -160,11 +165,11 @@ export class RaceScene {
       this.handleKartEvents(kart);
     }
 
-    // rubber-band AI top speed toward the player
+    // rubber-band AI top speed toward the player (strength per difficulty)
     for (const k of this.karts) {
       if (k.isPlayer) continue;
       const gap = this.player.totalProgress - k.totalProgress;
-      k.speedScale = clamp(1 + gap * 0.00045, 0.9, 1.1);
+      k.speedScale = clamp(1 + gap * this.tuning.rubberGain, this.tuning.rubberMin, this.tuning.rubberMax);
     }
 
     const hits = resolveKartCollisions(this.karts);
@@ -190,7 +195,7 @@ export class RaceScene {
     });
 
     // finish handling
-    if (!this.player.finished && this.player.lap > TOTAL_LAPS) {
+    if (!this.player.finished && this.player.lap > this.totalLaps) {
       this.player.finished = true;
       this.player.finishTime = this.raceTime;
       this.phase = 'finished';
@@ -199,7 +204,7 @@ export class RaceScene {
       this.autopilot = new AIController(this.player, this.track, 0.9, 0);
     }
     for (const k of this.karts) {
-      if (!k.isPlayer && !k.finished && k.lap > TOTAL_LAPS) {
+      if (!k.isPlayer && !k.finished && k.lap > this.totalLaps) {
         k.finished = true;
         k.finishTime = this.raceTime;
       }
@@ -207,7 +212,7 @@ export class RaceScene {
     if (this.phase === 'finished') {
       this.finishT += dt;
       if (this.finishT > 3 || input.justPressed('start')) {
-        this.game.showResults(this.buildStandings(), this.racerId);
+        this.game.showResults(this.buildStandings(), this.racerId, this.mode);
       }
     }
 
@@ -234,10 +239,10 @@ export class RaceScene {
           case 'item_get': audio.sfx('item_get'); break;
           case 'lap':
             this.lapPopupT = 2.5;
-            if (kart.lap === TOTAL_LAPS) {
+            if (kart.lap === this.totalLaps) {
               this.showMessage('FINAL LAP!', '#ff8040');
               audio.sfx('final_lap');
-            } else if (kart.lap <= TOTAL_LAPS) {
+            } else if (kart.lap <= this.totalLaps) {
               this.showMessage(`LAP ${kart.lap}`, '#fff', 1.2);
               audio.sfx('lap');
             }
@@ -264,14 +269,16 @@ export class RaceScene {
         }
       }
     }
-    // continuous particles
-    if (kart.drift && Math.random() < 0.6) this.emitDriftSmoke(kart);
-    if (kart.surface === SURF.GRASS && Math.abs(kart.speed) > 60 && Math.random() < 0.4) {
+    // continuous particles (reduced motion: far fewer)
+    const pRate = this.calm ? 0.15 : 1;
+    if (kart.drift && Math.random() < 0.6 * pRate) this.emitDriftSmoke(kart);
+    if (kart.surface === SURF.GRASS && Math.abs(kart.speed) > 60 && Math.random() < 0.4 * pRate) {
       this.emitDust(kart);
     }
   }
 
   updateItemBoxes(dt) {
+    if (!this.itemsEnabled) return;
     for (const box of this.track.itemBoxes) {
       if (box.respawn > 0) { box.respawn -= dt; continue; }
       for (const kart of this.karts) {
@@ -290,7 +297,8 @@ export class RaceScene {
   updateCamera(dt) {
     const mode = CAMERA_MODES[this.camMode];
     const k = this.player;
-    this.cam.angle = angleLerp(this.cam.angle, k.heading, damp(5.5, dt));
+    // reduced motion: camera tracks tighter, less swing
+    this.cam.angle = angleLerp(this.cam.angle, k.heading, damp(this.calm ? 11 : 5.5, dt));
     this.cam.x = k.x - Math.cos(this.cam.angle) * mode.back;
     this.cam.y = k.y - Math.sin(this.cam.angle) * mode.back;
     this.cam.height = mode.height;
@@ -314,9 +322,9 @@ export class RaceScene {
     return list.map((k) => {
       let time = k.finishTime;
       if (time == null) {
-        const progress = Math.max(1, k.totalProgress - N_SAMPLES * 0); // samples covered
-        const pace = this.raceTime / Math.max(1, progress);            // s per sample
-        const remaining = (TOTAL_LAPS + 1) * N_SAMPLES - progress;
+        const progress = Math.max(1, k.totalProgress); // samples covered
+        const pace = this.raceTime / Math.max(1, progress);
+        const remaining = (this.totalLaps + 1) * N_SAMPLES - progress;
         time = this.raceTime + remaining * pace;
       }
       return {
@@ -324,6 +332,7 @@ export class RaceScene {
         isPlayer: k.isPlayer,
         time,
         bestLap: k.lapTimes.length ? Math.min(...k.lapTimes) : null,
+        lapTimes: k.lapTimes.slice(),
       };
     });
   }
@@ -397,7 +406,7 @@ export class RaceScene {
       if (d.type === 'balloons') yOff = -6 - Math.sin(this.time * 1.8 + d.x * 0.01) * 4;
       sprites.push({ p, img, worldSize: d.size, yOff });
     }
-    for (const box of this.track.itemBoxes) {
+    for (const box of this.itemsEnabled ? this.track.itemBoxes : []) {
       if (box.respawn > 0) continue;
       const p = this.mode7.project(cam, box.x, box.y);
       if (!p || p.x < -40 || p.x > W + 40) continue;

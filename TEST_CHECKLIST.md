@@ -22,6 +22,19 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 - [x] Solid decor collision: full-speed ram into a house stops at the
       collision ring, never clips inside
 - [x] AI completes laps on the new layout (best laps ~57-60s)
+- [x] Mode select -> kart -> track select flow; locked tracks buzz + shake
+- [x] Time Trial: solo kart, no item boxes, LAST/BEST HUD, per-lap results
+- [x] Difficulty/laps/reduced-motion options change live and persist
+- [x] Gamepad mapping verified end-to-end via stubbed Gamepad API
+- [x] Deployed to GitHub Pages, repo public
+
+## Manual checks for Phase A
+- [ ] Play with a REAL gamepad (only a stubbed pad was tested): steering
+      deadzone feel, A/B/X/bumpers/triggers, Start pauses, Select backs out
+- [ ] EASY feels beatable, HARD feels pushy (rubber-band tuning)
+- [ ] 1-lap and 5-lap races start/finish correctly
+- [ ] Reduced motion: no blinking anywhere, calmer camera, sparse particles
+- [ ] https://janewolfe.github.io/retro-kart-gp/ plays identically to local
 - [x] 60 FPS sustained in race (426x240, debug overlay confirms)
 - [x] Speed cap holds: 230 u/s flat, ~303 only during boost pads
 - [x] AI completes 3 laps (~57s) and the race auto-finishes to results

@@ -3,7 +3,19 @@
 An original SNES/N64-inspired kart racer for desktop browsers. Vanilla
 HTML/CSS/JS with ES modules and Canvas 2D — no build step, no dependencies.
 
-## Run
+**Play it now:** <https://janewolfe.github.io/retro-kart-gp/>
+
+## Modes
+
+- **Grand Prix** — race 3 AI rivals with items and boost pads.
+- **Time Trial** — solo, no items, pure lap times.
+
+Options cover display mode, CRT scanlines, music/SFX volume, difficulty
+(easy/normal/hard), lap count (1/3/5), and reduced motion. A standard
+gamepad works out of the box (stick/dpad steer, A gas/select, B brake,
+X item, bumpers drift, Start pause).
+
+## Run locally
 
 ```sh
 python3 -m http.server 8000

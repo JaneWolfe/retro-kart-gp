@@ -26,4 +26,24 @@ export const RACERS = [
   },
 ];
 
-export const TOTAL_LAPS = 3;
+export const DEFAULT_LAPS = 3;
+export const LAP_OPTIONS = [1, 3, 5];
+export const DIFFICULTIES = ['EASY', 'NORMAL', 'HARD'];
+
+// AI tuning per difficulty: base skill and rubber-band behavior
+export const DIFFICULTY_TUNING = {
+  EASY: { skill: 0.87, rubberGain: 0.0003, rubberMin: 0.85, rubberMax: 1.04 },
+  NORMAL: { skill: 0.93, rubberGain: 0.00045, rubberMin: 0.9, rubberMax: 1.1 },
+  HARD: { skill: 0.985, rubberGain: 0.0006, rubberMin: 0.97, rubberMax: 1.13 },
+};
+
+export const TRACKS = [
+  { id: 'sunset', name: 'SUNSET LOOP GP', locked: false },
+  { id: 'neon', name: 'NEON HARBOR', locked: true },
+  { id: 'powder', name: 'POWDER PASS', locked: true },
+];
+
+export const MODES = {
+  gp: { name: 'GRAND PRIX', blurb: 'RACE 3 RIVALS WITH ITEMS' },
+  tt: { name: 'TIME TRIAL', blurb: 'SOLO. NO ITEMS. PURE LAPS.' },
+};

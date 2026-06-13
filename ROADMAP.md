@@ -5,15 +5,15 @@ static hosting (`python3 -m http.server`), all assets CC0/procedural,
 no Nintendo IP. The mode-7 look is the identity — we deepen it, we don't
 replace it with WebGL.
 
-## Phase A — Complete the game shell (parked Day-3 work)
+## Phase A — Complete the game shell (parked Day-3 work) ✅ DONE 2026-06-13
 
-Menus and modes; everything later hangs off this.
-- Mode select: Grand Prix / Time Trial (TT = solo, no items, lap focus).
-- Track select with locked placeholder slots.
-- Options: difficulty (AI skill + rubber-band), lap count (1/3/5),
-  reduced motion (calmer camera, fewer particles, no blinking).
-- Gamepad support (Gamepad API), maps alongside keyboard.
-- Deploy to GitHub Pages (static — zero code changes; instant shareability).
+- ✅ Mode select: Grand Prix / Time Trial (TT = solo, no items, lap-time HUD
+  and per-lap results).
+- ✅ Track select with locked NEON HARBOR / POWDER PASS placeholders.
+- ✅ Options: difficulty, laps (1/3/5), reduced motion — all persisted.
+- ✅ Gamepad support (verified via stubbed Gamepad API end-to-end).
+- ✅ Deployed: <https://janewolfe.github.io/retro-kart-gp/> (repo made
+  public — required for Pages on the free plan).
 
 ## Phase B — Items v2 + smarter AI
 
