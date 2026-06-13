@@ -415,6 +415,48 @@ export function makeBoltIcon() {
   return c;
 }
 
+export function makePuckIcon() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 12;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ff8030';
+  g.beginPath(); g.ellipse(6, 7, 5.5, 3.5, 0, 0, TAU); g.fill();
+  g.fillStyle = '#2a2a32';
+  g.beginPath(); g.ellipse(6, 5.5, 5.5, 3.5, 0, 0, TAU); g.fill();
+  g.fillStyle = '#4a4a55';
+  g.beginPath(); g.ellipse(6, 5, 3.5, 2, 0, 0, TAU); g.fill();
+  return c;
+}
+
+export function makeOilIcon() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 12;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1c1626';
+  g.beginPath(); g.ellipse(6, 9, 5.5, 2.5, 0, 0, TAU); g.fill();
+  // drip
+  g.beginPath();
+  g.moveTo(6, 0); g.quadraticCurveTo(9, 5, 6, 7); g.quadraticCurveTo(3, 5, 6, 0);
+  g.fill();
+  g.fillStyle = '#6a5c8a';
+  g.fillRect(5, 3, 1, 2);
+  return c;
+}
+
+export function makeShieldIcon() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 12;
+  const g = c.getContext('2d');
+  g.strokeStyle = '#4fd0ff';
+  g.lineWidth = 1.5;
+  g.beginPath(); g.arc(6, 6, 4.7, 0, TAU); g.stroke();
+  g.fillStyle = 'rgba(79,208,255,0.35)';
+  g.beginPath(); g.arc(6, 6, 4, 0, TAU); g.fill();
+  g.fillStyle = '#d8f4ff';
+  g.fillRect(3, 3, 2, 2);
+  return c;
+}
+
 export function buildSprites(racers, rng) {
   const karts = {};
   for (const r of racers) karts[r.id] = makeKartSheet(r.colors);
@@ -432,5 +474,11 @@ export function buildSprites(racers, rng) {
     lamp: makeLamp(),
     bushes: [makeBush(rng), makeBush(rng)],
     bolt: makeBoltIcon(),
+    icons: {
+      turbo: makeBoltIcon(),
+      puck: makePuckIcon(),
+      oil: makeOilIcon(),
+      shield: makeShieldIcon(),
+    },
   };
 }

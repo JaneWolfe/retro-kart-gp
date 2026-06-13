@@ -15,14 +15,16 @@ replace it with WebGL.
 - ✅ Deployed: <https://janewolfe.github.io/retro-kart-gp/> (repo made
   public — required for Pages on the free plan).
 
-## Phase B — Items v2 + smarter AI
+## Phase B — Items v2 + smarter AI ✅ DONE 2026-06-13
 
-Make the roulette honest and racing spicy.
-- Items: turbo (kept), projectile puck (bounces off barriers), oil slick
-  (spin-out hazard), bubble shield (blocks one hit). Original styling only.
-- AI: uses items with intent, drifts on long corners, occasionally takes
-  shortcuts at higher difficulty.
-- Spin-out state for karts (hit by puck / oil): spin animation + recovery.
+- ✅ Items: turbo, puck (bounces off barriers up to 4x), oil slick (18s,
+  owner-armed), shield (blocks one hit). Position-weighted roulette —
+  backmarkers get turbo, leaders get tools. Honest cycling roulette icon.
+- ✅ Spin-out state: control lock + spin animation + 1.2s immunity.
+- ✅ AI: fires pucks at karts ahead, drops oil when chased, shields promptly,
+  drifts sustained corners (earns mini-turbos), takes shortcuts on HARD.
+- ✅ Fixed: displacement-based AI stuck detection (wall-pinned karts at
+  ~24 u/s never triggered the old speed<18 check).
 
 ## Phase C — Time Trial ghosts + split-screen 2P (the realistic multiplayer)
 

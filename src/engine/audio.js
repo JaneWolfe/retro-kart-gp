@@ -152,6 +152,12 @@ class AudioSys {
       case 'finish': [523, 659, 784, 1046, 784, 1046].forEach((f, i) => this._tone({ f0: f, dur: 0.16, vol: 0.35, when: i * 0.13 })); break;
       case 'thud': this._noise({ dur: 0.12, vol: 0.4, type: 'lowpass', freq: 300 }); this._tone({ f0: 120, f1: 60, dur: 0.1, type: 'triangle', vol: 0.4 }); break;
       case 'wrong': this._tone({ f0: 330, f1: 160, dur: 0.25, type: 'sawtooth', vol: 0.25 }); break;
+      case 'puck_fire': this._tone({ f0: 900, f1: 250, dur: 0.16, type: 'sawtooth', vol: 0.3 }); this._noise({ dur: 0.08, vol: 0.12, freq: 3500 }); break;
+      case 'puck_bounce': this._tone({ f0: 700, f1: 500, dur: 0.05, type: 'square', vol: 0.2 }); break;
+      case 'spin': [440, 392, 330, 262, 220].forEach((f, i) => this._tone({ f0: f, dur: 0.09, type: 'square', vol: 0.28, when: i * 0.07 })); break;
+      case 'shield_up': this._tone({ f0: 523, dur: 0.08, vol: 0.25 }); this._tone({ f0: 784, dur: 0.14, vol: 0.25, when: 0.07 }); break;
+      case 'shield_pop': this._noise({ dur: 0.1, vol: 0.3, freq: 2500 }); this._tone({ f0: 600, f1: 200, dur: 0.12, type: 'triangle', vol: 0.3 }); break;
+      case 'oil_drop': this._tone({ f0: 200, f1: 90, dur: 0.14, type: 'triangle', vol: 0.3 }); break;
     }
   }
 

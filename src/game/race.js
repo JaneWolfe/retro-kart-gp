@@ -11,7 +11,7 @@ import { CAMERA_MODES, drawSky } from './mode7.js';
 import { drawHUD, drawCountdown, drawPauseMenu } from './hud.js';
 import { KART_FW, KART_FH, KART_FRAMES } from './sprites.js';
 import { RACERS, DIFFICULTY_TUNING } from './data.js';
-import { N_SAMPLES, SURF, SURF_NAMES } from './track.js';
+import { N_SAMPLES, SURF, SURF_NAMES, nearestSampleIdx } from './track.js';
 
 const KART_WORLD_SIZE = 30; // world units across one kart sprite
 
@@ -32,6 +32,7 @@ export class RaceScene {
     this.sprites = game.sprites;
     this.totalLaps = game.prefs.laps || 3;
     this.itemsEnabled = this.mode !== 'tt';
+    this.allowShortcuts = (DIFFICULTY_TUNING[game.prefs.difficulty] || DIFFICULTY_TUNING.NORMAL).skill >= 0.98;
     this.tuning = DIFFICULTY_TUNING[game.prefs.difficulty] || DIFFICULTY_TUNING.NORMAL;
     this.calm = !!game.prefs.reducedMotion;
 
@@ -69,6 +70,8 @@ export class RaceScene {
     this.wallHits = 0;   // player barrier impacts (debug overlay)
     this.wallSfxT = 0;
     this.tunnelT = 0;    // tunnel overlay fade 0..1
+    this.pucks = [];     // fired projectiles
+    this.oils = [];      // dropped slicks
     this.camMode = 0;
     this.cam = {
       x: this.player.x, y: this.player.y,
@@ -157,11 +160,20 @@ export class RaceScene {
           recover: input.justPressed('recover'),
         };
       } else if (kart.isPlayer) {
-        ctl = this.autopilot.getControls(dt, this.time);
+        ctl = this.autopilot.getControls(dt, this.time, this);
       } else {
-        ctl = this.ai.get(kart).getControls(dt, this.time);
+        ctl = this.ai.get(kart).getControls(dt, this.time, this);
       }
+      if (ctl.useItem && racing) this.tryUseItem(kart);
       kart.update(dt, ctl, this.track, racing);
+      // item roulette resolves here (needs positions for the weighting)
+      if (kart.itemRoll > 0) {
+        kart.itemRoll -= dt;
+        if (kart.itemRoll <= 0) {
+          kart.item = this.rollItem(kart);
+          if (kart.isPlayer) audio.sfx('item_get');
+        }
+      }
       this.handleKartEvents(kart);
     }
 
@@ -183,6 +195,8 @@ export class RaceScene {
     this.tunnelT = clamp(this.tunnelT + (inTunnel ? 5 : -5) * dt, 0, 1);
 
     this.updateItemBoxes(dt);
+    this.updatePucks(dt);
+    this.updateOils(dt);
     this.updateParticles(dt);
     this.updateCamera(dt);
 
@@ -234,6 +248,8 @@ export class RaceScene {
           case 'hop': audio.sfx('hop'); break;
           case 'jump': audio.sfx('jump'); break;
           case 'land': audio.sfx('land'); break;
+          case 'spin': audio.sfx('spin'); break;
+          case 'shield_pop': audio.sfx('shield_pop'); break;
           case 'boost': audio.sfx('boost'); break;
           case 'spark': audio.sfx('spark'); break;
           case 'item_get': audio.sfx('item_get'); break;
@@ -253,6 +269,17 @@ export class RaceScene {
       if (ev === 'boost') this.emitBoostFlames(kart);
       if (ev === 'land') {
         for (let i = 0; i < 5; i++) this.emitDust(kart);
+      }
+      if (ev === 'spin') {
+        if (!kart.isPlayer) audio.sfx('spin');
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * TAU;
+          this.particles.push({
+            x: kart.x + Math.cos(a) * 8, y: kart.y + Math.sin(a) * 8,
+            vx: Math.cos(a) * 70, vy: Math.sin(a) * 70,
+            life: 0.4, maxLife: 0.4, size: 4, color: '#d8d8e0',
+          });
+        }
       }
       if (ev === 'wall') {
         if (kart.isPlayer) {
@@ -274,6 +301,135 @@ export class RaceScene {
     if (kart.drift && Math.random() < 0.6 * pRate) this.emitDriftSmoke(kart);
     if (kart.surface === SURF.GRASS && Math.abs(kart.speed) > 60 && Math.random() < 0.4 * pRate) {
       this.emitDust(kart);
+    }
+  }
+
+  // ---- items v2 -------------------------------------------------------------
+
+  // Position-weighted roulette: leaders get tools, backmarkers get speed.
+  rollItem(kart) {
+    const n = this.karts.length;
+    const frac = n > 1 ? this.positionOf(kart) / (n - 1) : 1;
+    const table = [
+      ['turbo', 0.15 + 0.35 * frac],
+      ['puck', 0.35 - 0.12 * frac],
+      ['oil', 0.28 - 0.13 * frac],
+      ['shield', 0.22 - 0.1 * frac],
+    ];
+    let total = 0;
+    for (const [, w] of table) total += w;
+    let r = Math.random() * total;
+    for (const [item, w] of table) {
+      r -= w;
+      if (r <= 0) return item;
+    }
+    return 'turbo';
+  }
+
+  tryUseItem(kart) {
+    const item = kart.item;
+    if (!item) return;
+    kart.item = null;
+    switch (item) {
+      case 'turbo':
+        kart.boostT = Math.max(kart.boostT, 1.2);
+        if (kart.isPlayer) audio.sfx('boost');
+        this.emitBoostFlames(kart);
+        break;
+      case 'shield':
+        kart.shield = true;
+        if (kart.isPlayer) audio.sfx('shield_up');
+        break;
+      case 'puck': {
+        const sp = Math.hypot(kart.vx, kart.vy) + 330;
+        this.pucks.push({
+          x: kart.x + Math.cos(kart.heading) * 16,
+          y: kart.y + Math.sin(kart.heading) * 16,
+          vx: Math.cos(kart.heading) * sp,
+          vy: Math.sin(kart.heading) * sp,
+          t: 0, bounces: 0, owner: kart, sampleIdx: kart.sampleIdx,
+        });
+        audio.sfx('puck_fire');
+        break;
+      }
+      case 'oil':
+        this.oils.push({
+          x: kart.x - Math.cos(kart.heading) * 24,
+          y: kart.y - Math.sin(kart.heading) * 24,
+          life: 18, owner: kart, armT: 0.8,
+        });
+        if (kart.isPlayer) audio.sfx('oil_drop');
+        break;
+    }
+  }
+
+  popPuck(i, color = '#ff8030') {
+    const p = this.pucks[i];
+    for (let k = 0; k < 6; k++) {
+      this.particles.push({
+        x: p.x, y: p.y, vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.5) * 90,
+        life: 0.3, maxLife: 0.3, size: 4, color: k % 2 ? color : '#e8e4dc',
+      });
+    }
+    this.pucks.splice(i, 1);
+  }
+
+  updatePucks(dt) {
+    const t = this.track;
+    for (let i = this.pucks.length - 1; i >= 0; i--) {
+      const p = this.pucks[i];
+      p.t += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.t > 6 || p.x < -100 || p.y < -100 || p.x > 4196 || p.y > 4196) { this.popPuck(i); continue; }
+      p.sampleIdx = nearestSampleIdx(t, p.x, p.y, p.sampleIdx, true);
+      // barrier bounce (same normal trick as karts: walls run parallel to track)
+      if (t.surfaceAt(p.x | 0, p.y | 0) === SURF.WALL) {
+        const sm = t.samples[p.sampleIdx];
+        const px = -sm.dy, py = sm.dx;
+        const lat = (p.x - sm.x) * px + (p.y - sm.y) * py;
+        const sgn = lat >= 0 ? 1 : -1;
+        const nx = -px * sgn, ny = -py * sgn;
+        const vn = p.vx * nx + p.vy * ny;
+        if (vn < 0) { p.vx -= 2 * vn * nx; p.vy -= 2 * vn * ny; }
+        p.x += nx * 4; p.y += ny * 4;
+        if (++p.bounces > 4) { this.popPuck(i); continue; }
+        audio.sfx('puck_bounce');
+      }
+      // solid decor kills it
+      let dead = false;
+      for (const s of t.solids) {
+        const dx = p.x - s.x, dy = p.y - s.y;
+        if (dx * dx + dy * dy < (s.radius + 5) ** 2) { dead = true; break; }
+      }
+      if (dead) { this.popPuck(i); continue; }
+      // kart hits
+      for (const k of this.karts) {
+        if (k === p.owner && p.t < 0.6) continue;
+        const dx = k.x - p.x, dy = k.y - p.y;
+        if (dx * dx + dy * dy < 17 * 17) {
+          k.spinOut(); // shield handling inside
+          this.popPuck(i);
+          dead = true;
+          break;
+        }
+      }
+      if (dead) continue;
+    }
+  }
+
+  updateOils(dt) {
+    for (let i = this.oils.length - 1; i >= 0; i--) {
+      const o = this.oils[i];
+      o.life -= dt;
+      if (o.armT > 0) o.armT -= dt;
+      if (o.life <= 0) { this.oils.splice(i, 1); continue; }
+      for (const k of this.karts) {
+        if (k === o.owner && o.armT > 0) continue;
+        if (k.airborne) continue;
+        const dx = k.x - o.x, dy = k.y - o.y;
+        if (dx * dx + dy * dy < 16 * 16) k.spinOut();
+      }
     }
   }
 
@@ -413,6 +569,16 @@ export class RaceScene {
       const bob = Math.sin(this.time * 3 + box.x) * 3;
       sprites.push({ p, img: this.sprites.itemBox, worldSize: 16, yOff: -8 - bob, spin: true });
     }
+    for (const o of this.oils) {
+      const p = this.mode7.project(cam, o.x, o.y);
+      if (!p || p.x < -40 || p.x > W + 40) continue;
+      sprites.push({ p, oil: o });
+    }
+    for (const pk of this.pucks) {
+      const p = this.mode7.project(cam, pk.x, pk.y);
+      if (!p || p.x < -40 || p.x > W + 40) continue;
+      sprites.push({ p, puck: pk });
+    }
     for (const k of this.karts) {
       const p = this.mode7.project(cam, k.x, k.y);
       if (!p) continue;
@@ -427,7 +593,34 @@ export class RaceScene {
 
     for (const s of sprites) {
       if (s.kart) this.drawKart(ctx, s.kart, s.p);
-      else if (s.particle) {
+      else if (s.oil) {
+        // flat decal on the road
+        const w = 26 * s.p.scale, h = 9 * s.p.scale;
+        ctx.globalAlpha = Math.min(0.85, s.oil.life);
+        ctx.fillStyle = '#16121f';
+        ctx.beginPath();
+        ctx.ellipse(s.p.x, s.p.y - h * 0.3, w / 2, h / 2, 0, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(120,100,170,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(s.p.x - w * 0.12, s.p.y - h * 0.4, w * 0.18, h * 0.2, 0, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (s.puck) {
+        const r = Math.max(1.5, 6.5 * s.p.scale);
+        ctx.fillStyle = '#ff8030';
+        ctx.beginPath();
+        ctx.ellipse(s.p.x, s.p.y - r * 0.5, r, r * 0.55, 0, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#2a2a32';
+        ctx.beginPath();
+        ctx.ellipse(s.p.x, s.p.y - r * 0.8, r, r * 0.55, 0, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#4a4a55';
+        ctx.beginPath();
+        ctx.ellipse(s.p.x, s.p.y - r * 0.9, r * 0.6, r * 0.3, 0, 0, TAU);
+        ctx.fill();
+      } else if (s.particle) {
         const pt = s.particle;
         ctx.globalAlpha = pt.life / pt.maxLife * 0.8;
         ctx.fillStyle = pt.color;
@@ -498,7 +691,7 @@ export class RaceScene {
   drawKart(ctx, kart, p) {
     const sheet = this.sprites.karts[kart.racer.id];
     // pick view frame from heading relative to camera
-    let rel = kart.heading - this.cam.angle;
+    let rel = kart.heading - this.cam.angle + kart.spinAngle;
     if (kart.isPlayer) rel += kart.steerVis * 0.22; // steering lean
     let frame = Math.round((rel / TAU) * KART_FRAMES) % KART_FRAMES;
     if (frame < 0) frame += KART_FRAMES;
@@ -535,6 +728,18 @@ export class RaceScene {
       ctx.fillRect(x + Math.round(w * 0.3), Math.round(p.y - 2), Math.round(w * 0.4), 2);
       ctx.globalAlpha = 1;
     }
+
+    // shield bubble
+    if (kart.shield) {
+      const pulse = this.calm ? 0.55 : 0.45 + Math.sin(this.time * 6) * 0.15;
+      ctx.strokeStyle = `rgba(79,208,255,${pulse})`;
+      ctx.lineWidth = Math.max(1, w * 0.05);
+      ctx.beginPath();
+      ctx.ellipse(p.x, y + h * 0.55, w * 0.62, h * 0.72, 0, 0, TAU);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(79,208,255,0.12)';
+      ctx.fill();
+    }
   }
 
   renderDebug(ctx, W, H) {
@@ -546,11 +751,12 @@ export class RaceScene {
       `CHECKPOINT ${k.passedHalf ? 'OK' : 'PENDING'}`,
       `WALL HITS ${this.wallHits}`,
       `AIR ${k.z.toFixed(0)} TUNNEL ${this.playerInTunnel() ? 'Y' : 'N'}`,
+      `ITEM ${k.item || '-'} PK ${this.pucks.length} OIL ${this.oils.length}${k.shield ? ' SHLD' : ''}${k.spinT > 0 ? ' SPIN' : ''}`,
       `DRIFT ${k.drift ? k.drift.charge.toFixed(2) : '-'} BOOST ${k.boostT.toFixed(2)}`,
       `CAM ${CAMERA_MODES[this.camMode].name}`,
     ];
     ctx.fillStyle = 'rgba(8,8,20,0.6)';
-    ctx.fillRect(2, 30, 92, lines.length * 8 + 4);
+    ctx.fillRect(2, 30, 132, lines.length * 8 + 4);
     lines.forEach((l, i) => drawText(ctx, l, 5, 33 + i * 8, { color: '#7df07d' }));
   }
 }

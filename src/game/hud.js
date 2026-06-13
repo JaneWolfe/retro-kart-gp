@@ -46,12 +46,13 @@ export function drawHUD(ctx, race, W, H) {
     ctx.fillRect(7, H - 27, 22, 22);
     ctx.strokeStyle = '#cfcfd8';
     ctx.strokeRect(7.5, H - 26.5, 21, 21);
+    const icons = race.sprites.icons;
     if (player.itemRoll > 0) {
-      if (race.calm || Math.floor(race.time * 12) % 2 === 0) {
-        ctx.drawImage(race.sprites.bolt, 12, H - 22);
-      }
-    } else if (player.item === 'turbo') {
-      ctx.drawImage(race.sprites.bolt, 12, H - 22);
+      // honest roulette: cycle through everything that could come up
+      const cycle = ['turbo', 'puck', 'oil', 'shield'];
+      ctx.drawImage(icons[cycle[Math.floor(race.time * 12) % cycle.length]], 12, H - 22);
+    } else if (player.item && icons[player.item]) {
+      ctx.drawImage(icons[player.item], 12, H - 22);
     }
   } else {
     speedX = 8;

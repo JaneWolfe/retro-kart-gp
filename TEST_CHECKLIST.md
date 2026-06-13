@@ -27,6 +27,23 @@ Run `python3 -m http.server 8000`, open <http://localhost:8000>.
 - [x] Difficulty/laps/reduced-motion options change live and persist
 - [x] Gamepad mapping verified end-to-end via stubbed Gamepad API
 - [x] Deployed to GitHub Pages, repo public
+- [x] Puck: fires, flies, bounces off barriers (max 4), spins out victims,
+      owner-safe for 0.6s, dies on solid decor
+- [x] Oil slick: drops behind, arms after 0.8s for the owner, spins karts
+- [x] Shield: blocks exactly one puck/oil hit (pop, no spin)
+- [x] Roulette is position-weighted (verified 400-sample distribution) and
+      the HUD cycles all four icons honestly
+- [x] AI fires pucks at targets ahead, drops oil when chased, drifts long
+      corners (~1.7s holds, earns mini-turbos), takes shortcuts when allowed
+- [x] AI stuck-recovery now catches wall-pinned crawling (displacement test)
+- [x] Full GP race with items completes to results at normal pace (~58s laps)
+
+## Manual checks for Phase B
+- [ ] Getting puck'd feels fair (spin duration, immunity window)
+- [ ] Oil slicks are visible enough to dodge at speed
+- [ ] Shield bubble reads clearly; popping it is satisfying
+- [ ] AI item usage feels alive but not oppressive on NORMAL
+- [ ] HARD AI shortcut-taking is noticeable
 
 ## Manual checks for Phase A
 - [ ] Play with a REAL gamepad (only a stubbed pad was tested): steering

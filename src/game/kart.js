@@ -45,9 +45,14 @@ export class Kart {
     this.finishTime = null;
     this.raceTime = 0;
     this.wrongWayT = 0;
-    // items
-    this.item = null;        // 'turbo'
+    // items (rolled/used by the race scene)
+    this.item = null;        // 'turbo' | 'puck' | 'oil' | 'shield'
     this.itemRoll = 0;
+    this.shield = false;     // active bubble, blocks one hit
+    // spin-out (hit by puck / oil)
+    this.spinT = 0;
+    this.spinCooldown = 0;
+    this.spinAngle = 0;      // visual rotation while spinning
     this.events = [];        // per-frame audio/FX events consumed by the scene
   }
 
@@ -62,12 +67,41 @@ export class Kart {
     return m;
   }
 
+  // Spin out (puck/oil hit). Returns false if shielded or recently spun.
+  spinOut() {
+    if (this.spinT > 0 || this.spinCooldown > 0 || this.airborne) return false;
+    if (this.shield) {
+      this.shield = false;
+      this.events.push('shield_pop');
+      return false;
+    }
+    this.spinT = 1.1;
+    this.spinAngle = 0;
+    this.drift = null;
+    this.boostT = 0;
+    this.events.push('spin');
+    return true;
+  }
+
   // ctl: { throttle:0..1, brake:0..1, steer:-1..1, drift:bool, useItem:bool, recover:bool }
   update(dt, ctl, track, racing) {
     this.events.length = 0;
     const grip = this.racer.stats.grip;
 
     if (ctl.recover) this.recover(track);
+
+    // spinning: controls are gone until it ends
+    if (this.spinT > 0) {
+      this.spinT -= dt;
+      this.spinAngle += 11.4 * dt; // ~2 full turns over the spin
+      ctl = { throttle: 0, brake: 0, steer: 0, drift: false, driftPressed: false, useItem: false };
+      if (this.spinT <= 0) {
+        this.spinAngle = 0;
+        this.spinCooldown = 1.2;
+      }
+    } else if (this.spinCooldown > 0) {
+      this.spinCooldown -= dt;
+    }
 
     // ---- timers ----
     if (this.boostT > 0) this.boostT -= dt;
@@ -171,6 +205,7 @@ export class Kart {
 
     // drag + decay back to the cap when over it (e.g. boost just ended)
     fwd *= Math.exp(-DRAG * dt * (ctl.throttle > 0 || this.boostT > 0 ? 0.25 : 1));
+    if (this.spinT > 0) fwd *= Math.exp(-2.4 * dt); // spinning sheds speed fast
     if (fwd > cap) fwd += (cap - fwd) * Math.min(1, 6 * dt);
 
     // lateral grip (drifting slides, grass/dirt slide a bit, air has none)
@@ -212,19 +247,8 @@ export class Kart {
       if (Math.abs(vn) > 30) this.events.push('wall');
     }
 
-    // ---- items ----
-    if (this.itemRoll > 0) {
-      this.itemRoll -= dt;
-      if (this.itemRoll <= 0) {
-        this.item = 'turbo';
-        this.events.push('item_get');
-      }
-    }
-    if (ctl.useItem && this.item === 'turbo' && racing) {
-      this.item = null;
-      this.boostT = Math.max(this.boostT, 1.2);
-      this.events.push('boost');
-    }
+    // (item roll/use handling lives in the race scene — it needs positions
+    // and spawns world entities like pucks and oil slicks)
 
     // way off the map? snap back onto the track
     if (this.x < -120 || this.y < -120 || this.x > WORLD + 120 || this.y > WORLD + 120) {

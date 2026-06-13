@@ -1,4 +1,34 @@
-# HANDOFF — Retro Kart GP (2026-06-13: Phase A game shell complete)
+# HANDOFF — Retro Kart GP (2026-06-13: Phases A + B complete)
+
+## NEW: Phase B — items v2 + smarter AI
+
+- Items (race.js owns roll/use; kart.js only stores `item`/`shield`/spin
+  state): TURBO boost, PUCK projectile (race.pucks: barrier reflection via
+  the track-parallel normal trick, max 4 bounces, dies on solid decor,
+  owner-immune 0.6s), OIL slick (race.oils, 18s life, 0.8s owner arming),
+  SHIELD (one-hit bubble, consumed inside `Kart.spinOut()`).
+- `rollItem()` weights by position: leaders get tools, backmarkers turbo.
+  HUD roulette cycles all four icons (sprites.icons).
+- Spin-out: 1.1s control lock + `spinAngle` added to the sprite view angle,
+  hard speed decay, then 1.2s immunity (`spinCooldown`).
+- AI (ai.js): puck when a kart is ahead within 280 units and ±23° of the
+  nose; oil when chased within 150; shield promptly; drifts corners with
+  turn 0.3-0.9 at skill>=0.9 (holds ~1.7s, earns mini-turbos); follows
+  shortcut polylines when `race.allowShortcuts` (HARD only).
+- BUGFIX: AI stuck detection is now displacement-based (1.5s window, <35
+  units moved -> reverse). The old speed<18 check never fired for karts
+  wall-pinned at ~24 u/s, which could strand them for an entire race.
+- Verification note: the preview tab was hidden this session (Chrome stops
+  rAF), so checks ran by stepping `scene.update(1/60)` synchronously in
+  evals — full flow nav, every item interaction, weighted-roulette
+  distribution (400 rolls), AI drift/shortcut counters over 50 sim-seconds,
+  and a complete autopilot GP (58s laps, normal pace) all pass; render
+  smoke-tested with all new entities on screen. No fresh screenshots —
+  visual polish pass needs human eyes.
+
+---
+
+# Previous handoff (2026-06-13: Phase A game shell complete)
 
 ## NEW: Phase A (roadmap) — modes, options, gamepad, deployed
 
